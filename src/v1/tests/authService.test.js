@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import userService from "../services/auth.service.js"; // Ensure the path is correct
+import userService from "../services/auth.service.js";
 import User from "../models/user.model.js";
 import UserProfile from "../models/userProfile.model.js";
 import OTP from "../models/otp.model.js";
@@ -42,7 +42,7 @@ describe("User Service", () => {
         firstName: "John",
       };
       const hashedPassword = "hashed_password";
-      const session = await mongoose.startSession(); // Now this will return the mocked session
+      const session = await mongoose.startSession();
 
       const mockUser = [{ _id: "userId123", email: "test@example.com" }];
       const mockUserProfile = [{ userId: "userId123", firstName: "John" }];
