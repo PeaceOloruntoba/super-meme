@@ -28,12 +28,32 @@ const UserSchema = new Schema(
       required: [true, "Please provide a password"],
       select: false,
     },
+    businessName: {
+      type: String,
+    },
+    businessType: {
+      type: [String],
+      enum: [
+        "Independent Designer",
+        "Fashion Studio",
+        "Alterations Service",
+        "Costume Design",
+        "Bridal Boutique",
+        "Fashion School",
+        "Other",
+      ],
+      default: "Other",
+    },
     roles: {
       type: [String],
-      enum: ["user", "admin"],
-      default: ["user"],
+      enum: ["user", "admin", "designer"],
+      default: ["designer"],
     },
     isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    sendNewsletter: {
       type: Boolean,
       default: false,
     },
