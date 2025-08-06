@@ -27,19 +27,13 @@ export const userValidator = [
     .isLength({ min: 5 })
     .withMessage("Password must be at least 5 characters long"),
 
-  body("phoneNumber")
-    .exists()
-    .withMessage("Phone number is required")
-    .isString()
-    .withMessage("Phone Number must be a string"),
-
   body("roles")
     .exists()
     .withMessage("roles is required")
     .isArray()
     .withMessage("Roles must be an array of strings")
     .custom((value) => {
-      const validRoles = ["user", "admin"];
+      const validRoles = ["user", "admin", "designer"];
       if (value.length > 1) {
         throw ApiError.unprocessableEntity("User can only have one role");
       }

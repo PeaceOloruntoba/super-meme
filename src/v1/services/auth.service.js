@@ -67,12 +67,15 @@ export async function login(userData = {}) {
   await validatePassword(password, user.password);
 
   if (!user.isEmailVerified) {
-    throw ApiError.forbidden("Email Not Verified");
+    await emailService.sendOTPEmail(user.email, user.firstName);
+    throw ApiError.forbidden(
+      "Email Not Verified, please check your email for the OTP"
+    );
   }
 
   const token = generateToken({
     userId: user._id,
-    user: user._id,
+    email: user.email,
     roles: user.roles,
   });
 
