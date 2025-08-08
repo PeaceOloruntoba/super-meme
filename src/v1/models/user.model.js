@@ -30,17 +30,14 @@ const UserSchema = new Schema(
     },
     address: {
       type: String,
-      required: [true, "Please provide a address"],
       select: false,
     },
     bio: {
       type: String,
-      required: [true, "Please provide a bio"],
       select: false,
     },
     website: {
       type: String,
-      required: [true, "Please provide a website"],
       select: false,
     },
     businessName: {
@@ -80,10 +77,10 @@ const UserSchema = new Schema(
     // NEW: User settings object
     settings: {
       emailNotifications: { type: Boolean, default: true },
-      pushNotifications: { type: Boolean, default: true },
-      projectDeadlines: { type: Boolean, default: true },
-      clientMessages: { type: Boolean, default: true },
-      paymentReminders: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: false },
+      projectDeadlines: { type: Boolean, default: false },
+      clientMessages: { type: Boolean, default: false },
+      paymentReminders: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false },
       theme: { type: String, default: "light", enum: ["light", "dark"] },
       language: { type: String, default: "en" },
