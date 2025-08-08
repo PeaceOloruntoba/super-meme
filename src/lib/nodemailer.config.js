@@ -7,7 +7,8 @@ env.config();
 
 export const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST || "smtp-relay.brevo.com",
-  port: 587,
+   port: 465, // Try port 465
+  secure: true,
   auth: {
     user: process.env.BREVO_EMAIL,
     pass: process.env.BREVO_PASSWORD,
@@ -19,6 +20,7 @@ export const transporter = nodemailer.createTransport({
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    console.log("no we sail...");
     const info = await transporter.sendMail({
       from: process.env.MAIL_FROM || "Admin@gmail.com", // sender address
       to, // list of receivers
