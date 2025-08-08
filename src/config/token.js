@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import ApiError from "../utils/apiError.js";
 
 export const generateToken = (userId) => {
-  const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
+  const token = jwt.sign(userId, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_LIFETIME || "1d",
   });
   return token;

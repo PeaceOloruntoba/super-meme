@@ -7,7 +7,7 @@ import authService from "../services/auth.service.js";
  * Controller to handle updating a user's profile.
  */
 export const updateProfile = asyncWrapper(async (req, res, next) => {
-  const { userId } = req.user.userId;
+  const { userId } = req.user;
   const updateData = req.body;
 
   if (!userId) {
@@ -22,7 +22,7 @@ export const updateProfile = asyncWrapper(async (req, res, next) => {
  * Controller to handle updating a user's profile image.
  */
 export const updateImage = asyncWrapper(async (req, res, next) => {
-  const { userId } = req.user.userId;
+  const { userId } = req.user;
 
   if (!req.files || !req.files.image) {
     throw ApiError.badRequest(
@@ -44,7 +44,7 @@ export const updateImage = asyncWrapper(async (req, res, next) => {
  * Controller to handle getting a user's profile details.
  */
 export const getUser = asyncWrapper(async (req, res, next) => {
-  const { userId } = req.user.userId;
+  const { userId } = req.user;
   const result = await authService.getUser(userId);
   res.status(200).json(result);
 });
