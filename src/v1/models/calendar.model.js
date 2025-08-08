@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
-const CalendarEventSchema = new Schema(
+const CalendarSchema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -44,4 +44,4 @@ const CalendarEventSchema = new Schema(
   }
 );
 
-export default mongoose.model("CalendarEvent", CalendarEventSchema);
+export default mongoose.model("Calendar", CalendarSchema);
