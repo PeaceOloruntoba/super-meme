@@ -44,7 +44,7 @@ const UserSchema = new Schema(
       type: String,
     },
     businessType: {
-      type: String,
+      type: [String],
       enum: [
         "Independent Designer",
         "Fashion Studio",

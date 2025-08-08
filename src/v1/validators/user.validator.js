@@ -26,24 +26,6 @@ export const userValidator = [
     .withMessage("password is required")
     .isLength({ min: 5 })
     .withMessage("Password must be at least 5 characters long"),
-    
-  body("address")
-    .exists()
-    .withMessage("address is required")
-    .isLength({ min: 5 })
-    .withMessage("Please provide a valid address"),
-    
-  body("bio")
-    .exists()
-    .withMessage("bio is required")
-    .isLength({ min: 5 })
-    .withMessage("Bio must be at least 5 characters long"),
-    
-  body("website")
-    .exists()
-    .withMessage("website is required")
-    .isLength({ min: 5 })
-    .withMessage("Website url must be at least 5 characters long"),
 
   body("roles")
     .exists()

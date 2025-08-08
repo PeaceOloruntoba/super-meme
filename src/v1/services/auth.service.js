@@ -142,6 +142,7 @@ export async function resetPassword({ email, otp, password }) {
 const authService = {
   findUserByEmail,
   findUserByIdOrEmail,
+  getUser,
   register,
   login,
   sendOTP,
