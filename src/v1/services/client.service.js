@@ -1,5 +1,6 @@
 import Client from "../models/client.model.js";
 import ApiError from "../../utils/apiError.js";
+import User from "../models/user.model.js";
 
 const clientService = {
   /**
@@ -63,23 +64,60 @@ const clientService = {
    * @returns {Promise<object>} The updated client.
    */
   updateClient: async (clientId, userId, updateData) => {
-    const client = await Client.findOneAndUpdate(
+    const isStatusUpdate = updateData.status !== undefined;
+
+    const existingClient = await Client.findOne({ _id: clientId, userId });
+
+    if (!existingClient) {
+      throw ApiError.notFound(
+        "Client not found or you don't have permission to update it."
+      );
+    }
+
+    const updatedClient = await Client.findOneAndUpdate(
       { _id: clientId, userId },
       { $set: updateData },
       { new: true, runValidators: true }
     );
 
-    if (!client) {
-      throw ApiError.notFound(
-        "Client not found or you don't have permission to update it."
-      );
+    if (
+      isStatusUpdate &&
+      existingClient.status !== updatedClient.status &&
+      updatedClient.email
+    ) {
+      const user = await User.findById(userId);
+
+      if (user?.settings?.clientMessages) {
+        try {
+          const subject = `Account Status Update from ${
+            user.businessName || user.firstName
+          }`;
+          const context = {
+            clientName: updatedClient.name,
+            userName: user.firstName,
+            newStatus: updatedClient.status.toUpperCase(),
+          };
+
+          await emailService.sendTemplateEmail(
+            updatedClient.email,
+            subject,
+            "clientStatusUpdateTemplate",
+            context
+          );
+          console.log(
+            `Notification email sent to ${updatedClient.name} for status update.`
+          );
+        } catch (error) {
+          console.error("Failed to send client status update email:", error);
+        }
+      }
     }
 
     return {
       success: true,
       status_code: 200,
       message: "Client updated successfully.",
-      data: { client },
+      data: { client: updatedClient },
     };
   },
 
