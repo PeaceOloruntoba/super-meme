@@ -33,7 +33,7 @@ const calendar = {
    */
   getAllEvents: async (userId) => {
     const events = await Calendar.find({ userId })
-      .populate("clientId", "name email")
+      .populate("clientId")
       .sort({ startTime: 1 });
 
     return {
@@ -54,7 +54,7 @@ const calendar = {
     const event = await Calendar.findOne({
       _id: eventId,
       userId,
-    }).populate("clientId", "name email");
+    }).populate("clientId");
 
     if (!event) {
       throw ApiError.notFound("Event not found.");
