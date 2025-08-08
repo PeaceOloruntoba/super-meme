@@ -1,7 +1,7 @@
 import express from "express";
-import { isAuth } from "../../middlewares/auth";
-import { getUser, updateImage, updateProfile } from "../controllers/user.controller";
-import methodNotAllowed from "../../middlewares/methodNotAllowed";
+import { isAuth } from "../../middlewares/auth.js";
+import { getUser, updateImage, updateProfile } from "../controllers/user.controller.js";
+import methodNotAllowed from "../../middlewares/methodNotAllowed.js";
 
 const router = express.Router();
 

@@ -10,6 +10,7 @@ import notFound from "./src/middlewares/notFound.js";
 import { errorMiddleware } from "./src/middlewares/error.js";
 
 import authRoutesV1 from "./src/v1/routes/auth.routes.js";
+import userRoutesV1 from "./src/v1/routes/user.routes.js";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -25,6 +26,7 @@ app.use(
 app.use(morgan("dev"));
 
 app.use("/api/v1/auth", authRoutesV1);
+app.use("/api/v1/user", userRoutesV1);
 // app.use("/api/v1/admin", adminRoutes);
 app.use(notFound);
 app.use(errorMiddleware);

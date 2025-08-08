@@ -1,7 +1,6 @@
 import User from "../models/user.model.js";
-import ApiError from "../../utils/apiError.js"; // Assuming you have ApiError
-// Ensure this path is correct based on where you put cloudinary upload logic
-import { uploadToCloudinary } from "../../utils/cloudinary.js"; // Assuming cloudinary upload utility
+import ApiError from "../../utils/apiError.js";
+import { uploadToCloudinary } from "./upload.service.js";
 
 const userService = {
   /**
@@ -11,14 +10,12 @@ const userService = {
    * @returns {Promise<object>} - An object with success status, message, and updated user data.
    */
   updateProfile: async function (userId, updateData) {
-    // Find the user by ID
     const user = await User.findById(userId);
 
     if (!user) {
       throw ApiError.notFound("User not found.");
     }
 
-    // List of allowed fields to update directly on the user document
     const allowedFields = [
       "firstName",
       "lastName",
@@ -30,16 +27,13 @@ const userService = {
       "sendNewsletter",
     ];
 
-    // Update allowed fields
     allowedFields.forEach((field) => {
       if (updateData[field] !== undefined) {
         user[field] = updateData[field];
       }
     });
 
-    // Handle nested settings updates
     if (updateData.settings && typeof updateData.settings === "object") {
-      // Allowed settings fields. Be specific to prevent arbitrary updates.
       const allowedSettingsFields = [
         "emailNotifications",
         "pushNotifications",
@@ -61,9 +55,8 @@ const userService = {
       });
     }
 
-    await user.save(); // Save the updated user document
+    await user.save();
 
-    // Remove sensitive data before returning
     user.password = undefined;
 
     return {
@@ -92,13 +85,11 @@ const userService = {
     }
 
     try {
-      // Upload the image to Cloudinary using your utility function
       const imageUrl = await uploadToCloudinary(imageFile.tempFilePath);
 
-      user.image = imageUrl; // Update the user's image URL
-      await user.save(); // Save the updated user document
+      user.image = imageUrl;
+      await user.save();
 
-      // Remove sensitive data before returning
       user.password = undefined;
 
       return {
@@ -108,17 +99,14 @@ const userService = {
         data: { user },
       };
     } catch (error) {
-      // Re-throw or wrap Cloudinary upload errors
       if (error instanceof ApiError) {
-        throw error; // If uploadToCloudinary throws an ApiError, re-throw it
+        throw error;
       }
       throw ApiError.internalServerError(
         "Failed to upload image: " + error.message
       );
     }
   },
-
-  // You can add other user-related services here, e.g., getUsers, deleteUser, etc.
 };
 
 export default userService;
