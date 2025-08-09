@@ -2,6 +2,24 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
+const measurementDetailSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    size: {
+      type: Number,
+      required: true,
+    },
+    unit: {
+      type: String,
+      default: "inches",
+    },
+  },
+  { _id: false }
+);
+
 const MeasurementsSchema = new Schema(
   {
     userId: {
@@ -19,8 +37,8 @@ const MeasurementsSchema = new Schema(
       required: [true, "Garment type is required."],
     },
     measurements: {
-      type: Schema.Types.Mixed,
-      default: {},
+      type: [measurementDetailSchema],
+      default: [],
     },
     notes: String,
   },
