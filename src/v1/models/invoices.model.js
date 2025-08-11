@@ -2,6 +2,30 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
+const InvoiceItemSchema = new Schema(
+  {
+    description: {
+      type: String,
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    rate: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    amount: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { _id: false } // Prevents Mongoose from creating an _id for each subdocument
+);
+
 const InvoiceSchema = new Schema(
   {
     userId: {
@@ -27,6 +51,7 @@ const InvoiceSchema = new Schema(
     amount: {
       type: Number,
       required: [true, "Amount is required."],
+      min: 0,
     },
     status: {
       type: String,
@@ -38,7 +63,7 @@ const InvoiceSchema = new Schema(
       required: [true, "Due date is required."],
     },
     items: {
-      type: Schema.Types.Mixed,
+      type: [InvoiceItemSchema],
       default: [],
     },
   },
