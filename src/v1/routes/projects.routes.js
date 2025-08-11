@@ -25,8 +25,8 @@ router
   .delete(isAuth, deleteProject)
   .all(methodNotAllowed);
 
-clientNestedRouter
-  .route("/")
+router
+  .route("/:clientId")
   .get(isAuth, getAllProjectsByClient)
   .all(methodNotAllowed);
 
