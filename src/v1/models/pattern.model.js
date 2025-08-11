@@ -14,13 +14,57 @@ const PatternSchema = new Schema(
       required: [true, "Pattern name is required."],
     },
     description: String,
-    type: {
+    garmentType: {
       type: String,
-      required: [true, "Pattern type is required."],
+      enum: ["Dress", "Blouse", "Skirt", "Jacket", "Pants", "Other"],
+      required: [true, "Garment type is required."],
+    },
+    style: {
+      type: String,
+      enum: [
+        "Casual",
+        "Formal",
+        "Vintage",
+        "Modern",
+        "Sportswear",
+        "Boho",
+        "Other",
+      ],
+      required: [true, "Style is required."],
+    },
+    sizeRange: {
+      type: String,
+      enum: ["XS-S", "M-L", "XL-XXL", "All sizes", "Custom"],
+      required: [true, "Size range is required."],
+    },
+    fabricType: {
+      type: String,
+      enum: [
+        "Cotton",
+        "Silk",
+        "Wool",
+        "Linen",
+        "Denim",
+        "Satin",
+        "Leather",
+        "Knit",
+        "Other",
+      ],
+      required: [true, "Fabric type is required."],
+    },
+    occasion: String,
+    additionalDetails: String,
+    image_urls: {
+      type: [String],
+      default: [],
+    },
+    isAiGenerated: {
+      type: Boolean,
+      default: false,
     },
     difficulty: {
       type: String,
-      required: [true, "Difficulty is required."],
+      enum: ["Beginner", "Intermediate", "Advanced"],
     },
     instructions: {
       type: Schema.Types.Mixed,
@@ -29,11 +73,6 @@ const PatternSchema = new Schema(
     materials: {
       type: Schema.Types.Mixed,
       default: [],
-    },
-    image_url: String,
-    isAiGenerated: {
-      type: Boolean,
-      default: false,
     },
   },
   {
