@@ -15,6 +15,7 @@ import clientRoutesV1 from "./src/v1/routes/client.routes.js";
 import calendarEventRoutesV1 from "./src/v1/routes/calendar.routes.js";
 import measurementsRoutesV1 from "./src/v1/routes/measurements.routes.js";
 import projectsRoutesV1 from "./src/v1/routes/projects.routes.js";
+import invoiceRoutesV1 from "./src/v1/routes/projects.routes.js";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -35,6 +36,7 @@ app.use("/api/v1/clients", clientRoutesV1);
 app.use("/api/v1/calendar", calendarEventRoutesV1);
 app.use("/api/v1/measurements", measurementsRoutesV1);
 app.use("/api/v1/projects", projectsRoutesV1);
+app.use("/api/v1/invoice", invoiceRoutesV1);
 // app.use("/api/v1/admin", adminRoutes);
 app.use(notFound);
 app.use(errorMiddleware);
