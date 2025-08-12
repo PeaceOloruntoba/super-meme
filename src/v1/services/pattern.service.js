@@ -86,6 +86,25 @@ const patternService = {
   },
 
   /**
+   * Retrieves all patterns
+   * @returns {Promise<object>} An array of patterns.
+   */
+  getAll: async (userId) => {
+    try {
+      const patterns = await Pattern.find().sort({ createdAt: -1 });
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Patterns retrieved successfully.",
+        data: { patterns },
+      };
+    } catch (error) {
+      console.error("Error retrieving all patterns:", error);
+      throw ApiError.internalServerError("Failed to retrieve patterns.");
+    }
+  },
+
+  /**
    * Retrieves all patterns for a specific user.
    * @param {string} userId - The ID of the user.
    * @returns {Promise<object>} An array of patterns.

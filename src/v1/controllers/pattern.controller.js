@@ -31,6 +31,14 @@ export const createPattern = asyncWrapper(async (req, res, next) => {
 });
 
 /**
+ * Controller to get all patterns.
+ */
+export const getAll = asyncWrapper(async (req, res, next) => {
+  const result = await patternService.getAll();
+  res.status(result.statusCode).json(result);
+});
+
+/**
  * Controller to get all patterns for a user.
  */
 export const getAllPatterns = asyncWrapper(async (req, res, next) => {
