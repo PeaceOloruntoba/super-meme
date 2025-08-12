@@ -191,6 +191,36 @@ const subscriptionService = {
       }
     }
   },
+
+  checkAndDeactivateExpiredSubscriptions: async () => {
+    try {
+      const now = new Date();
+
+      const usersToDeactivate = await User.find({
+        plan: { $ne: "free" },
+        trialEndDate: { $lt: now },
+        isSubActive: true,
+        subscriptionId: null,
+      });
+
+      if (usersToDeactivate.length > 0) {
+        for (const user of usersToDeactivate) {
+          console.log(
+            `Trial expired for user ${user._id}. Deactivating subscription.`
+          );
+          await User.findByIdAndUpdate(user._id, {
+            plan: "free",
+            isSubActive: false,
+          });
+        }
+        console.log(`Deactivated ${usersToDeactivate.length} expired trials.`);
+      }
+
+      return { success: true, message: "Subscription check completed." };
+    } catch (error) {
+      console.error("Error running subscription cron job:", error);
+    }
+  },
 };
 
 export default subscriptionService;
