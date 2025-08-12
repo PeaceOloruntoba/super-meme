@@ -31,9 +31,7 @@ export async function findUserByIdOrEmail(identifier) {
 export async function register(userData = {}) {
   const { password } = userData;
   const hashedPassword = await hashPassword(password);
-
   const user = await User.create({ ...userData, password: hashedPassword });
-
   const token = generateToken(
     {
       email: user.email,
