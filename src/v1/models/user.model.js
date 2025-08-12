@@ -74,7 +74,6 @@ const UserSchema = new Schema(
       default:
         "https://res.cloudinary.com/demmgc49v/image/upload/v1695969739/default-avatar_scnpps.jpg",
     },
-    // NEW: User settings object
     settings: {
       emailNotifications: { type: Boolean, default: true },
       pushNotifications: { type: Boolean, default: false },
