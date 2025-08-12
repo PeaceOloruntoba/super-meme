@@ -92,6 +92,24 @@ const UserSchema = new Schema(
       },
       defaultProjectDuration: { type: String, default: "14" },
     },
+    plan: {
+      type: String,
+      enum: ["free", "premium", "enterprise"],
+      default: "free",
+    },
+    isSubActive: {
+      type: Boolean,
+      default: true,
+    },
+    trialEndDate: {
+      type: Date,
+      default: () => new Date(+new Date() + 14 * 24 * 60 * 60 * 1000),
+    },
+    subscriptionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Subscription",
+      default: null,
+    },
   },
   {
     timestamps: true,
