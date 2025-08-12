@@ -72,7 +72,7 @@ const UserSchema = new Schema(
     image: {
       type: String,
       default:
-        "https://res.cloudinary.com/demmgc49v/image/upload/v1695969739/default-avatar_scnpps.jpg",
+        "https://cdn.vectorstock.com/i/500p/45/59/profile-photo-placeholder-icon-design-in-gray-vector-37114559.jpg",
     },
     settings: {
       emailNotifications: { type: Boolean, default: true },
