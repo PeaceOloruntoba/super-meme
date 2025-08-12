@@ -22,6 +22,7 @@ import invoiceRoutesV1 from "./src/v1/routes/invoice.routes.js";
 import patternRoutesV1 from "./src/v1/routes/pattern.routes.js";
 import subscriptionRoutesV1 from "./src/v1/routes/subscription.routes.js";
 import webhookRoutesV1 from "./src/v1/routes/webhook.routes.js";
+import dashboardRoutesV1 from "./src/v1/routes/dashboard.routes.js";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -48,6 +49,7 @@ app.use("/api/v1/projects", projectsRoutesV1);
 app.use("/api/v1/invoice", invoiceRoutesV1);
 app.use("/api/v1/pattern", patternRoutesV1);
 app.use("/api/v1/subscription", subscriptionRoutesV1);
+app.use("/api/v1/dashboard", dashboardRoutesV1);
 // app.use("/api/v1/admin", adminRoutes);
 app.use(notFound);
 app.use(errorMiddleware);
