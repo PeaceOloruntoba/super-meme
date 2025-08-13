@@ -5,21 +5,36 @@ const measurementsService = {
   /**
    * Creates a new measurement record for a specific client.
    * @param {string} userId - The ID of the user creating the measurement.
-   * @param {string} clientId - The ID of the client the measurement is for.
    * @param {object} measurementData - The measurement data.
    * @returns {Promise<object>} The newly created measurement.
    */
-  createMeasurement: async (userId, clientId, measurementData) => {
+  createMeasurement: async (userId, measurementData) => {
     const newMeasurement = await Measurements.create({
       ...measurementData,
       userId,
-      clientId,
     });
     return {
       success: true,
       statusCode: 201,
       message: "Measurement record created successfully.",
       data: { measurement: newMeasurement },
+    };
+  },
+
+  /**
+   * Retrieves all measurement records for an authenticated user.
+   * @param {string} userId - The ID of the user.
+   * @returns {Promise<object>} An array of measurement records.
+   */
+  getAllMeasurements: async (userId) => {
+    const measurements = await Measurements.find({ userId }).sort({
+      createdAt: -1,
+    });
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Measurements retrieved successfully.",
+      data: { measurements },
     };
   },
 

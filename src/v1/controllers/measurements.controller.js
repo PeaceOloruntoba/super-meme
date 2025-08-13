@@ -7,18 +7,26 @@ import ApiError from "../../utils/apiError.js";
  */
 export const createMeasurement = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
-  const { clientId } = req.params;
   const measurementData = req.body;
-  if (!clientId) {
-    throw ApiError.badRequest("Client ID is required in the URL parameters.");
-  }
   const result = await measurementsService.createMeasurement(
     userId,
-    clientId,
     measurementData
   );
   res.status(result.statusCode).json(result);
 });
+
+/**
+ * Controller to get all measurement records for a specific client.
+ */
+export const getAllMeasurements = asyncWrapper(
+  async (req, res, next) => {
+    const { userId } = req.user;
+    const result = await measurementsService.getAllMeasurements(
+      userId
+    );
+    res.status(result.statusCode).json(result);
+  }
+);
 
 /**
  * Controller to get all measurement records for a specific client.
