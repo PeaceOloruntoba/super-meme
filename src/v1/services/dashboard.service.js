@@ -53,6 +53,10 @@ const dashboardService = {
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
 
+      // Calculate 7 days from now for "due this week" metrics (CORRECTED LOCATION)
+      const sevenDaysFromNow = new Date(today);
+      sevenDaysFromNow.setDate(today.getDate() + 7);
+
       // --- 1. Active Clients Count (Current Month vs. Last Month) ---
       const activeClientsCurrentMonth = await Client.countDocuments({
         userId: new mongoose.Types.ObjectId(userId),
@@ -146,8 +150,8 @@ const dashboardService = {
           : 0; // If last month was 0, and current is > 0, it's 100% growth
 
       // --- 5. Upcoming Deadlines (within next 7 days) ---
-      const sevenDaysFromNow = new Date(today);
-      sevenDaysFromNow.setDate(today.getDate() + 7);
+      // The declaration of sevenDaysFromNow is now here and also at the top.
+      // Keeping it at the top is cleaner.
 
       const upcomingDeadlines = await Calendar.find({
         userId: new mongoose.Types.ObjectId(userId),
