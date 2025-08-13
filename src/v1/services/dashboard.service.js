@@ -15,31 +15,45 @@ const dashboardService = {
    */
   getDashboardStats: async (userId) => {
     try {
+      // Ensure the user exists
       const user = await User.findById(userId);
       if (!user) {
         throw ApiError.notFound("User not found.");
       }
 
       const today = new Date();
-
+      // Set to the first day of the current month
       const firstDayOfCurrentMonth = new Date(
         today.getFullYear(),
         today.getMonth(),
         1
       );
-
+      // Set to the first day of the next month (exclusive end date for current month data)
       const firstDayOfNextMonth = new Date(
         today.getFullYear(),
         today.getMonth() + 1,
         1
       );
-
+      // Set to the first day of the previous month
       const firstDayOfLastMonth = new Date(
         today.getFullYear(),
         today.getMonth() - 1,
         1
       );
 
+      // Calculate start of current week (e.g., Sunday 00:00:00)
+      const startOfCurrentWeek = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - today.getDay()
+      );
+      startOfCurrentWeek.setHours(0, 0, 0, 0); // Set to start of the day
+
+      // Calculate 7 days ago for "created this week" metrics
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      // --- 1. Active Clients Count (Current Month vs. Last Month) ---
       const activeClientsCurrentMonth = await Client.countDocuments({
         userId: new mongoose.Types.ObjectId(userId),
         status: "active",
@@ -55,15 +69,29 @@ const dashboardService = {
       const activeClientsChange =
         activeClientsCurrentMonth - activeClientsLastMonth;
 
+      // --- 2. Active Projects Count & Projects Due This Week ---
       const activeProjectsCount = await Project.countDocuments({
         userId: new mongoose.Types.ObjectId(userId),
         status: { $in: ["planning", "in-progress", "review"] },
       });
 
+      const projectsDueThisWeek = await Project.countDocuments({
+        userId: new mongoose.Types.ObjectId(userId),
+        status: { $in: ["planning", "in-progress", "review"] },
+        dueDate: { $gte: startOfCurrentWeek, $lte: sevenDaysFromNow }, // Projects due from start of week to 7 days from now
+      });
+
+      // --- 3. Total Patterns Created & Patterns Created This Week ---
       const patternsCreatedCount = await Pattern.countDocuments({
         userId: new mongoose.Types.ObjectId(userId),
       });
 
+      const patternsCreatedThisWeek = await Pattern.countDocuments({
+        userId: new mongoose.Types.ObjectId(userId),
+        createdAt: { $gte: sevenDaysAgo, $lte: today },
+      });
+
+      // --- 4. Revenue Stats (Current Month vs. Last Month) ---
       const currentMonthRevenuePipeline = await Invoice.aggregate([
         {
           $match: {
@@ -115,8 +143,9 @@ const dashboardService = {
           ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
           : currentMonthRevenue > 0
           ? 100
-          : 0;
+          : 0; // If last month was 0, and current is > 0, it's 100% growth
 
+      // --- 5. Upcoming Deadlines (within next 7 days) ---
       const sevenDaysFromNow = new Date(today);
       sevenDaysFromNow.setDate(today.getDate() + 7);
 
@@ -130,6 +159,7 @@ const dashboardService = {
         .sort({ endTime: 1 })
         .limit(3);
 
+      // --- 6. Recent Activity ---
       const recentProjects = await Project.find({
         userId: new mongoose.Types.ObjectId(userId),
       })
@@ -179,7 +209,9 @@ const dashboardService = {
             changeFromLastMonth: activeClientsChange,
           },
           activeProjects: activeProjectsCount,
+          projectsDueThisWeek: projectsDueThisWeek, // NEW
           patternsCreated: patternsCreatedCount,
+          patternsCreatedThisWeek: patternsCreatedThisWeek, // NEW
           revenue: {
             currentMonth: currentMonthRevenue,
             lastMonth: lastMonthRevenue,
