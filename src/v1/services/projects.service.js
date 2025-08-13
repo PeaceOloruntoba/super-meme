@@ -41,7 +41,7 @@ const projectService = {
   getAllProjects: async (userId) => {
     try {
       const projects = await Project.find({ userId })
-        .populate("clientId", "name email")
+        .populate("clientId")
         .sort({ createdAt: -1 });
       return {
         success: true,
@@ -65,7 +65,7 @@ const projectService = {
   getAllProjectsByClient: async (userId, clientId) => {
     try {
       const projects = await Project.find({ userId, clientId })
-        .populate("clientId", "name email")
+        .populate("clientId")
         .sort({ createdAt: -1 });
       return {
         success: true,
@@ -90,7 +90,7 @@ const projectService = {
       const project = await Project.findOne({
         _id: projectId,
         userId,
-      }).populate("clientId", "name email");
+      }).populate("clientId");
 
       if (!project) {
         throw ApiError.notFound("Project record not found.");
@@ -124,7 +124,7 @@ const projectService = {
         { _id: projectId, userId },
         { $set: updateData },
         { new: true, runValidators: true }
-      ).populate("clientId", "name email");
+      ).populate("clientId");
 
       if (!updatedProject) {
         throw ApiError.notFound(

@@ -46,7 +46,7 @@ app.use("/api/v1/clients", clientRoutesV1);
 app.use("/api/v1/calendar", calendarEventRoutesV1);
 app.use("/api/v1/measurements", measurementsRoutesV1);
 app.use("/api/v1/projects", projectsRoutesV1);
-app.use("/api/v1/invoice", invoiceRoutesV1);
+app.use("/api/v1/invoices", invoiceRoutesV1);
 app.use("/api/v1/pattern", patternRoutesV1);
 app.use("/api/v1/subscription", subscriptionRoutesV1);
 app.use("/api/v1/dashboard", dashboardRoutesV1);
