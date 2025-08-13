@@ -64,9 +64,7 @@ const invoiceService = {
    */
   getAllInvoices: async (userId) => {
     try {
-      const invoices = await Invoice.find({ userId })
-        .populate("clientId", "name email")
-        .populate("projectId", "name")
+      const invoices = await Invoice.find({ userId }).populate("clientId").populate("projectId")
         .sort({ createdAt: -1 });
 
       return {
@@ -90,8 +88,8 @@ const invoiceService = {
   getAllInvoicesByClient: async (userId, clientId) => {
     try {
       const invoices = await Invoice.find({ userId, clientId })
-        .populate("clientId", "name email")
-        .populate("projectId", "name")
+        .populate("clientId")
+        .populate("projectId")
         .sort({ createdAt: -1 });
 
       return {
