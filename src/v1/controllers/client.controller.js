@@ -9,7 +9,7 @@ export const createClient = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const clientData = req.body;
   const result = await clientService.createClient(userId, clientData);
-  res.status(result.status_code).json(result);
+  res.status(result.statusCode).json(result);
 });
 
 /**
@@ -18,7 +18,7 @@ export const createClient = asyncWrapper(async (req, res, next) => {
 export const getAllClients = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const result = await clientService.getAllClients(userId);
-  res.status(result.status_code).json(result);
+  res.status(result.statusCode).json(result);
 });
 
 /**
@@ -33,7 +33,7 @@ export const getSingleClient = asyncWrapper(async (req, res, next) => {
   }
 
   const result = await clientService.getSingleClient(clientId, userId);
-  res.status(result.status_code).json(result);
+  res.status(result.statusCode).json(result);
 });
 
 /**
@@ -49,7 +49,7 @@ export const updateClient = asyncWrapper(async (req, res, next) => {
   }
 
   const result = await clientService.updateClient(clientId, userId, updateData);
-  res.status(result.status_code).json(result);
+  res.status(result.statusCode).json(result);
 });
 
 /**
@@ -64,5 +64,5 @@ export const deleteClient = asyncWrapper(async (req, res, next) => {
   }
 
   const result = await clientService.deleteClient(clientId, userId);
-  res.status(result.status_code).json(result);
+  res.status(result.statusCode).json(result);
 });
