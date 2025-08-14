@@ -110,6 +110,16 @@ const UserSchema = new Schema(
       ref: "Subscription",
       default: null,
     },
+    revenueGoals: {
+      monthly: {
+        type: Number,
+        default: 0,
+      },
+      yearly: {
+        type: Number,
+        default: 0,
+      },
+    },
   },
   {
     timestamps: true,

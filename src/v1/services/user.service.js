@@ -25,6 +25,7 @@ const userService = {
       "bio",
       "website",
       "sendNewsletter",
+      "revenueGoals",
     ];
 
     allowedFields.forEach((field) => {
