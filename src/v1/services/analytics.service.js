@@ -422,18 +422,16 @@ const analyticsService = {
         userId: userObjectId,
         createdAt: { $lt: startDate },
       });
+      console.log(clientsAtStartOfPeriod);
 
       const clientsAtEndOfPeriod = await Client.countDocuments({
         userId: userObjectId,
         createdAt: { $lte: endDate },
       });
+      console.log(activeClientsCount);
 
-      const clientRetentionNumerator =
-        clientsAtEndOfPeriod - newClientsThisPeriod;
       const clientRetentionRate =
-        clientsAtStartOfPeriod > 0
-          ? (clientRetentionNumerator / clientsAtStartOfPeriod) * 100
-          : 0;
+        (activeClientsCount / inactiveClientsCount) * 100;
 
       // Average Projects per Client
       const totalProjectsAllTime = await Project.countDocuments({
