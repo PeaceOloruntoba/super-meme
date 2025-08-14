@@ -42,7 +42,7 @@ export const cancelSubscription = asyncWrapper(async (req, res, next) => {
 
 /**
  * @desc    Controller to get the authenticated user's current subscription status and details.
- * @route   GET /api/v1/subscriptions
+ * @route   GET /api/v1/subscriptions/status
  * @access  Private (Authenticated User)
  * @param   {object} req - Express request object.
  * @param   {object} res - Express response object.
