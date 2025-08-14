@@ -1,12 +1,13 @@
 import User from "../models/user.model.js";
 import ApiError from "../../utils/apiError.js";
 import { uploadToCloudinary } from "./upload.service.js";
+import bcrypt from "bcrypt";
 
 const userService = {
   /**
    * Updates a user's profile information.
    * @param {string} userId - The ID of the user to update.
-   * @param {object} updateData - An object containing fields to update.
+   * @param {object} updateData - An object containing fields to update, including nested settings.
    * @returns {Promise<object>} - An object with success status, message, and updated user data.
    */
   updateProfile: async function (userId, updateData) {
@@ -16,14 +17,17 @@ const userService = {
       throw ApiError.notFound("User not found.");
     }
 
+    // Handle updates for top-level fields
     const allowedFields = [
       "firstName",
       "lastName",
-      "businessName",
-      "businessType",
+      "email",
       "address",
       "bio",
       "website",
+      "phone",
+      "businessName",
+      "businessType",
       "sendNewsletter",
       "revenueGoals",
     ];
@@ -34,6 +38,7 @@ const userService = {
       }
     });
 
+    // Handle updates for nested 'settings' fields
     if (updateData.settings && typeof updateData.settings === "object") {
       const allowedSettingsFields = [
         "emailNotifications",
@@ -58,6 +63,7 @@ const userService = {
 
     await user.save();
 
+    // Remove sensitive data before sending the response
     user.password = undefined;
 
     return {
@@ -65,6 +71,38 @@ const userService = {
       status_code: 200,
       message: "Profile updated successfully.",
       data: { user },
+    };
+  },
+
+  /**
+   * Updates a user's password.
+   * @param {string} userId - The ID of the user.
+   * @param {string} currentPassword - The user's current password.
+   * @param {string} newPassword - The new password.
+   * @returns {Promise<object>} - An object with success status and message.
+   */
+  updatePassword: async function (userId, currentPassword, newPassword) {
+    const user = await User.findById(userId).select("+password");
+
+    if (!user) {
+      throw ApiError.notFound("User not found.");
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw ApiError.unauthorized("Incorrect current password.");
+    }
+
+    // Hash and save the new password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    return {
+      success: true,
+      status_code: 200,
+      message: "Password updated successfully.",
     };
   },
 

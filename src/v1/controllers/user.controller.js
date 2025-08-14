@@ -19,6 +19,29 @@ export const updateProfile = asyncWrapper(async (req, res, next) => {
 });
 
 /**
+ * Controller to handle changing a user's password.
+ */
+export const updatePassword = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+
+  if (!currentPassword || !newPassword) {
+    throw ApiError.badRequest("Current and new passwords are required.");
+  }
+
+  const result = await userService.updatePassword(
+    userId,
+    currentPassword,
+    newPassword
+  );
+  res.status(result.status_code).json(result);
+});
+
+/**
  * Controller to handle updating a user's profile image.
  */
 export const updateImage = asyncWrapper(async (req, res, next) => {
