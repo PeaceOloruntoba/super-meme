@@ -90,11 +90,27 @@ const analyticsService = {
       case "all":
       default:
         startDate = new Date(0); // Epoch time
-        prevStartDate = new Date(0); // No real previous period for "all"
+        // For "all", prev period doesn't make logical sense for change %
+        prevStartDate = new Date(0);
         prevEndDate = new Date(0);
         break;
     }
     return { startDate, endDate, prevStartDate, prevEndDate };
+  },
+
+  /**
+   * Calculates percentage change. Handles division by zero.
+   * @param {number} current - Current value.
+   * @param {number} previous - Previous value.
+   * @returns {number} Percentage change.
+   */
+  calculateChangePercentage: (current, previous) => {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0; // If previous was 0 and current is > 0, it's 100% growth
+    }
+    // Ensures no NaN if current and previous are same non-zero values
+    if (current === previous) return 0;
+    return ((current - previous) / previous) * 100;
   },
 
   /**
@@ -115,6 +131,7 @@ const analyticsService = {
         analyticsService.getTimePeriodDates(timePeriod);
 
       const userObjectId = new mongoose.Types.ObjectId(userId);
+      const now = new Date(); // To ensure consistency for 6-month trend calculations
 
       // --- Key Metrics Calculations ---
 
@@ -148,29 +165,26 @@ const analyticsService = {
         prevPeriodRevenueResult.length > 0
           ? prevPeriodRevenueResult[0].total
           : 0;
-      const totalRevenueChange =
-        prevTotalRevenue > 0
-          ? ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100
-          : totalRevenue > 0
-          ? 100
-          : 0;
+      const totalRevenueChange = analyticsService.calculateChangePercentage(
+        totalRevenue,
+        prevTotalRevenue
+      );
 
-      // Active Clients
-      const currentPeriodClients = await Client.countDocuments({
+      // Active Clients (total clients with status 'active' at the end of the period)
+      const activeClientsCount = await Client.countDocuments({
         userId: userObjectId,
-        createdAt: { $gte: startDate, $lte: endDate },
+        status: "active",
+        createdAt: { $lte: endDate }, // Clients created up to the end date and are active
       });
-      const prevPeriodClients = await Client.countDocuments({
+      const prevActiveClientsCount = await Client.countDocuments({
         userId: userObjectId,
-        createdAt: { $gte: prevStartDate, $lte: prevEndDate },
+        status: "active",
+        createdAt: { $lte: prevEndDate },
       });
-      const activeClientsChange =
-        prevPeriodClients > 0
-          ? ((currentPeriodClients - prevPeriodClients) / prevPeriodClients) *
-            100
-          : currentPeriodClients > 0
-          ? 100
-          : 0;
+      const activeClientsChange = analyticsService.calculateChangePercentage(
+        activeClientsCount,
+        prevActiveClientsCount
+      );
 
       // Projects Completed
       const currentPeriodCompletedProjects = await Project.countDocuments({
@@ -184,15 +198,12 @@ const analyticsService = {
         updatedAt: { $gte: prevStartDate, $lte: prevEndDate },
       });
       const projectsCompletedChange =
-        prevPeriodCompletedProjects > 0
-          ? ((currentPeriodCompletedProjects - prevPeriodCompletedProjects) /
-              prevPeriodCompletedProjects) *
-            100
-          : currentPeriodCompletedProjects > 0
-          ? 100
-          : 0;
+        analyticsService.calculateChangePercentage(
+          currentPeriodCompletedProjects,
+          prevPeriodCompletedProjects
+        );
 
-      // Average Project Value (sum of completed project invoices / count of completed projects)
+      // Average Project Value (sum of paid invoices for completed projects / count of such projects in current period)
       const currentPeriodProjectValues = await Project.aggregate([
         {
           $match: {
@@ -210,7 +221,7 @@ const analyticsService = {
           },
         },
         { $unwind: "$invoices" },
-        { $match: { "invoices.status": "paid" } },
+        { $match: { "invoices.status": "paid" } }, // Only consider paid invoices linked to completed projects
         {
           $group: {
             _id: null,
@@ -256,26 +267,35 @@ const analyticsService = {
           ? prevPeriodProjectValues[0].totalValue /
             prevPeriodProjectValues[0].projectCount
           : 0;
-      const avgProjectValueChange =
-        prevAvgProjectValue > 0
-          ? ((avgProjectValue - prevAvgProjectValue) / prevAvgProjectValue) *
-            100
-          : avgProjectValue > 0
-          ? 100
-          : 0;
+      const avgProjectValueChange = analyticsService.calculateChangePercentage(
+        avgProjectValue,
+        prevAvgProjectValue
+      );
 
       // --- Revenue Analysis ---
 
-      // Monthly Revenue Trend (last 6 months)
-      const monthlyRevenueTrend = await Invoice.aggregate([
+      // Monthly Revenue Trend (last 6 months, for chart display)
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const monthlyRevenueTrendAgg = await Invoice.aggregate([
         {
           $match: {
             userId: userObjectId,
             status: "paid",
-            createdAt: {
-              $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1),
-              $lte: now,
-            }, // Last 6 months
+            createdAt: { $gte: sixMonthsAgo, $lte: now },
+          },
+        },
+        {
+          $lookup: {
+            from: "projects",
+            localField: "projectId",
+            foreignField: "_id",
+            as: "projectDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$projectDetails",
+            preserveNullAndEmptyArrays: true,
           },
         },
         {
@@ -285,10 +305,7 @@ const analyticsService = {
               month: { $month: "$createdAt" },
             },
             revenue: { $sum: "$amount" },
-            // To get projects completed in this month, we would need to join with Projects and count.
-            // For simplicity, we'll just sum invoices here.
-            // Getting project count per month in this aggregation is complex without a direct link,
-            // or requires a separate lookup. Let's keep it revenue for simplicity for now.
+            projectsCount: { $sum: 1 }, // Sum of invoices, which corresponds to projects with a paid invoice
           },
         },
         { $sort: { "_id.year": 1, "_id.month": 1 } },
@@ -296,7 +313,7 @@ const analyticsService = {
           $project: {
             _id: 0,
             month: {
-              // Map month number to name
+              // Map month number to short name
               $switch: {
                 branches: [
                   { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
@@ -317,20 +334,28 @@ const analyticsService = {
             },
             year: "$_id.year",
             revenue: "$revenue",
+            projectsCount: "$projectsCount",
           },
         },
       ]);
-      // Filling in missing months with 0 revenue for last 6 months for consistent chart display
+
+      // Fill in missing months with 0 revenue for consistent 6-month chart display
       const filledMonthlyRevenueTrend = [];
       for (let i = 5; i >= 0; i--) {
+        // Iterate for last 6 months including current
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthName = d.toLocaleString("en-US", { month: "short" });
         const year = d.getFullYear();
-        const existingData = monthlyRevenueTrend.find(
+        const existingData = monthlyRevenueTrendAgg.find(
           (item) => item.month === monthName && item.year === year
         );
         filledMonthlyRevenueTrend.push(
-          existingData || { month: monthName, year: year, revenue: 0 }
+          existingData || {
+            month: monthName,
+            year: year,
+            revenue: 0,
+            projectsCount: 0,
+          }
         );
       }
 
@@ -355,9 +380,9 @@ const analyticsService = {
         { $match: { "projectDetails.userId": userObjectId } }, // Ensure project also belongs to user
         {
           $group: {
-            _id: "$projectDetails.type",
+            _id: "$projectDetails.type", // Group by project type
             totalRevenue: { $sum: "$amount" },
-            projectCount: { $sum: 1 },
+            projectCount: { $sum: 1 }, // Count projects for this type
           },
         },
         { $sort: { totalRevenue: -1 } },
@@ -384,6 +409,72 @@ const analyticsService = {
               : 0,
         })
       );
+
+      // --- Client Insights ---
+
+      // New Clients Acquired (clients created within the current period)
+      const newClientsThisPeriod = await Client.countDocuments({
+        userId: userObjectId,
+        createdAt: { $gte: startDate, $lte: endDate },
+      });
+
+      // Average Projects per Client (using all projects and all clients up to end date)
+      const totalProjectsAllTime = await Project.countDocuments({
+        userId: userObjectId,
+        createdAt: { $lte: endDate },
+      });
+      const totalClientsAllTime = await Client.countDocuments({
+        userId: userObjectId,
+        createdAt: { $lte: endDate },
+      });
+      const avgProjectsPerClient =
+        totalClientsAllTime > 0
+          ? totalProjectsAllTime / totalClientsAllTime
+          : 0;
+
+      // Top Clients by Revenue
+      const topClientsByRevenue = await Invoice.aggregate([
+        {
+          $match: {
+            userId: userObjectId,
+            status: "paid",
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: "$clientId",
+            totalRevenue: { $sum: "$amount" },
+            projectsCount: { $addToSet: "$projectId" }, // Get unique project IDs
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            totalRevenue: 1,
+            projectsCount: { $size: "$projectsCount" }, // Count unique projects
+          },
+        },
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 5 }, // Top 5 clients
+        {
+          $lookup: {
+            from: "clients", // assuming your Client model is 'clients' collection
+            localField: "_id",
+            foreignField: "_id",
+            as: "clientDetails",
+          },
+        },
+        { $unwind: "$clientDetails" },
+        {
+          $project: {
+            id: "$_id",
+            name: "$clientDetails.name",
+            projects: "$projectsCount",
+            value: "$totalRevenue",
+          },
+        },
+      ]);
 
       // --- Project Performance ---
 
@@ -430,6 +521,7 @@ const analyticsService = {
         totalDurationDays += duration;
 
         if (project.dueDate) {
+          // Compare completed date with due date
           if (project.updatedAt.getTime() <= project.dueDate.getTime()) {
             onTimeCount++;
           } else {
@@ -449,27 +541,6 @@ const analyticsService = {
           ? totalDurationDays / totalCompletedProjectsForTimeline
           : 0;
 
-      // --- Efficiency Metrics (using mock data as detailed tracking isn't in models) ---
-      // These would ideally come from specific time-tracking or QA models.
-      const efficiencyMetrics = {
-        timeEfficiencyByProjectType: [
-          { type: "Wedding Dress", avgHours: 45, efficiencyScore: 92 },
-          { type: "Business Suit", avgHours: 28, efficiencyScore: 88 },
-          { type: "Casual Dress", avgHours: 18, efficiencyScore: 95 },
-          { type: "Evening Gown", avgHours: 35, efficiencyScore: 85 },
-        ],
-        resourceUtilization: {
-          overall: 78,
-          peak: 95,
-          offPeak: 45,
-        },
-        qualityMetrics: {
-          avgClientRating: 4.8,
-          avgRevisions: 1.2,
-          firstFitSuccessRate: 96,
-        },
-      };
-
       return {
         success: true,
         statusCode: 200,
@@ -477,27 +548,34 @@ const analyticsService = {
         data: {
           keyMetrics: {
             totalRevenue: totalRevenue,
-            totalRevenueChange: totalRevenueChange,
-            activeClients: currentPeriodClients,
-            activeClientsChange: activeClientsChange,
+            totalRevenueChange: parseFloat(totalRevenueChange.toFixed(1)),
+            activeClients: activeClientsCount,
+            activeClientsChange: parseFloat(activeClientsChange.toFixed(1)),
             projectsCompleted: currentPeriodCompletedProjects,
-            projectsCompletedChange: projectsCompletedChange,
-            avgProjectValue: avgProjectValue,
-            avgProjectValueChange: avgProjectValueChange,
+            projectsCompletedChange: parseFloat(
+              projectsCompletedChange.toFixed(1)
+            ),
+            avgProjectValue: parseFloat(avgProjectValue.toFixed(2)),
+            avgProjectValueChange: parseFloat(avgProjectValueChange.toFixed(1)),
           },
           revenueAnalysis: {
             monthlyTrend: filledMonthlyRevenueTrend,
             byServiceType: revenueByServiceTypeFormatted,
           },
+          clientInsights: {
+            newClientsThisPeriod: newClientsThisPeriod,
+            avgProjectsPerClient: parseFloat(avgProjectsPerClient.toFixed(1)),
+            topClients: topClientsByRevenue,
+          },
           projectPerformance: {
             statusDistribution: projectStatusDistributionFormatted,
             timelinePerformance: {
-              onTimeDeliveryRate: onTimeDeliveryRate,
-              avgDaysToComplete: avgDaysToComplete,
+              onTimeDeliveryRate: parseFloat(onTimeDeliveryRate.toFixed(1)),
+              avgDaysToComplete: parseFloat(avgDaysToComplete.toFixed(1)),
               projectsDelayed: projectsDelayed,
             },
           },
-          efficiencyMetrics: efficiencyMetrics, // Mocked for now
+          // efficiencyMetrics removed as per user request to avoid dummy data
         },
       };
     } catch (error) {
