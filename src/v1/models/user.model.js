@@ -27,18 +27,24 @@ const UserSchema = new Schema(
       type: String,
       required: [true, "Please provide a password"],
       select: false,
+      minlength: [6, "Password must be at least 6 characters long"],
+      maxlength: [1024, "Password must not exceed 1024 characters"],
     },
     address: {
       type: String,
-      select: false,
     },
     bio: {
       type: String,
-      select: false,
     },
     website: {
       type: String,
-      select: false,
+      match: [
+        /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/,
+        "Please provide a valid URL",
+      ],
+    },
+    phone: {
+      type: String,
     },
     businessName: {
       type: String,
