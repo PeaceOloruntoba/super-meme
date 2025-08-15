@@ -1,7 +1,18 @@
 import asyncWrapper from "../../middlewares/asyncWrapper.js";
 import userService from "../services/user.service.js";
 import ApiError from "../../utils/apiError.js";
-import authService from "../services/auth.service.js";
+
+/**
+ * Controller to handle getting a user's profile.
+ */
+export const getProfile = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+  const result = await userService.getProfile(userId);
+  res.status(result.status_code).json(result);
+});
 
 /**
  * Controller to handle updating a user's profile.
@@ -15,6 +26,44 @@ export const updateProfile = asyncWrapper(async (req, res, next) => {
   }
 
   const result = await userService.updateProfile(userId, updateData);
+  res.status(result.status_code).json(result);
+});
+
+/**
+ * Controller to handle updating a user's notifications.
+ */
+export const updateNotifications = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  const { settings } = req.body;
+
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+
+  if (!settings || typeof settings !== "object") {
+    throw ApiError.badRequest("Invalid notifications data.");
+  }
+
+  const result = await userService.updateNotifications(userId, settings);
+  res.status(result.status_code).json(result);
+});
+
+/**
+ * Controller to handle updating a user's preferences.
+ */
+export const updatePreferences = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  const { settings } = req.body;
+
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+
+  if (!settings || typeof settings !== "object") {
+    throw ApiError.badRequest("Invalid preferences data.");
+  }
+
+  const result = await userService.updatePreferences(userId, settings);
   res.status(result.status_code).json(result);
 });
 
@@ -61,13 +110,4 @@ export const updateImage = asyncWrapper(async (req, res, next) => {
 
   const result = await userService.updateImage(userId, imageFile);
   res.status(result.status_code).json(result);
-});
-
-/**
- * Controller to handle getting a user's profile details.
- */
-export const getUser = asyncWrapper(async (req, res, next) => {
-  const { userId } = req.user;
-  const result = await authService.getUser(userId);
-  res.status(200).json(result);
 });
