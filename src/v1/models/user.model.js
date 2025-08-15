@@ -1,3 +1,6 @@
+// Updated user.model.js
+// Added status, lastLogin, activeSessions, is2FAEnabled
+
 import mongoose from "mongoose";
 
 const { Schema } = mongoose;
@@ -129,6 +132,26 @@ const UserSchema = new Schema(
         type: Number,
         default: 0,
       },
+    },
+    status: {
+      type: String,
+      enum: ["active", "deleted"],
+      default: "active",
+    },
+    lastLogin: {
+      type: Date,
+    },
+    activeSessions: [
+      {
+        device: String,
+        location: String,
+        lastActive: Date,
+        current: Boolean,
+      },
+    ],
+    is2FAEnabled: {
+      type: Boolean,
+      default: false,
     },
   },
   {

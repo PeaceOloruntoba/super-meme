@@ -41,15 +41,36 @@ export const cancelSubscription = asyncWrapper(async (req, res, next) => {
 });
 
 /**
- * @desc    Controller to get the authenticated user's current subscription status and details.
- * @route   GET /api/v1/subscriptions/status
+ * @desc    Controller to get the authenticated user's current subscription details.
+ * @route   GET /api/v1/subscriptions/details
  * @access  Private (Authenticated User)
  * @param   {object} req - Express request object.
  * @param   {object} res - Express response object.
  * @param   {function} next - Express next middleware function.
  */
-export const getSubscriptionStatus = asyncWrapper(async (req, res, next) => {
+export const getSubscriptionDetails = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
-  const result = await subscriptionService.getSubscriptionStatus(userId);
+  const result = await subscriptionService.getSubscriptionDetails(userId);
+  res.status(result.statusCode).json(result);
+});
+
+/**
+ * @desc    Controller to update payment method.
+ * @route   PATCH /api/v1/subscriptions/payment-method
+ * @access  Private (Authenticated User)
+ * @param   {object} req - Express request object.
+ * @param   {object} res - Express response object.
+ * @param   {function} next - Express next middleware function.
+ */
+export const updatePaymentMethod = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  const { paymentMethodId } = req.body;
+  if (!paymentMethodId) {
+    throw ApiError.badRequest("Payment method ID is required.");
+  }
+  const result = await subscriptionService.updatePaymentMethod(
+    userId,
+    paymentMethodId
+  );
   res.status(result.statusCode).json(result);
 });

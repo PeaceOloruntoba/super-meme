@@ -111,3 +111,43 @@ export const updateImage = asyncWrapper(async (req, res, next) => {
   const result = await userService.updateImage(userId, imageFile);
   res.status(result.status_code).json(result);
 });
+
+/**
+ * Controller to delete user account.
+ */
+export const deleteAccount = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+  const result = await userService.deleteAccount(userId);
+  res.status(result.status_code).json(result);
+});
+
+/**
+ * Controller to toggle 2FA.
+ */
+export const toggle2FA = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  const { enable } = req.body;
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+  if (typeof enable !== "boolean") {
+    throw ApiError.badRequest("Enable flag is required as boolean.");
+  }
+  const result = await userService.toggle2FA(userId, enable);
+  res.status(result.status_code).json(result);
+});
+
+/**
+ * Controller to logout from all sessions.
+ */
+export const logoutAll = asyncWrapper(async (req, res, next) => {
+  const { userId } = req.user;
+  if (!userId) {
+    throw ApiError.unauthorized("User ID not found in request.");
+  }
+  const result = await userService.logoutAll(userId);
+  res.status(result.status_code).json(result);
+});

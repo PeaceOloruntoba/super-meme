@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import ApiError from "../../utils/apiError.js";
 import { uploadToCloudinary } from "./upload.service.js";
 import bcrypt from "bcrypt";
+import subscriptionService from "./subscription.service.js";
 
 const userService = {
   /**
@@ -20,6 +21,68 @@ const userService = {
       status_code: 200,
       message: "Profile fetched successfully.",
       data: { user },
+    };
+  },
+
+  /**
+   * Deletes a user's account by setting status to 'deleted' and canceling subscription if any.
+   * @param {string} userId - The ID of the user.
+   * @returns {Promise<object>} - An object with success status and message.
+   */
+  deleteAccount: async function (userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw ApiError.notFound("User not found.");
+    }
+    if (user.subscriptionId) {
+      await subscriptionService.cancelSubscription(userId);
+    }
+    user.status = "deleted";
+    user.activeSessions = [];
+    await user.save();
+    return {
+      success: true,
+      status_code: 200,
+      message: "Account deleted successfully.",
+    };
+  },
+
+  /**
+   * Toggles 2FA for the user (stub, real implementation needs secret generation and verification).
+   * @param {string} userId - The ID of the user.
+   * @param {boolean} enable - Whether to enable or disable 2FA.
+   * @returns {Promise<object>} - An object with success status and message.
+   */
+  toggle2FA: async function (userId, enable) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw ApiError.notFound("User not found.");
+    }
+    user.is2FAEnabled = enable;
+    await user.save();
+    return {
+      success: true,
+      status_code: 200,
+      message: `2FA ${enable ? "enabled" : "disabled"} successfully.`,
+    };
+  },
+
+  /**
+   * Logs out all active sessions for the user.
+   * @param {string} userId - The ID of the user.
+   * @returns {Promise<object>} - An object with success status and message.
+   */
+  logoutAll: async function (userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw ApiError.notFound("User not found.");
+    }
+    user.activeSessions = [];
+    await user.save();
+    return {
+      success: true,
+      status_code: 200,
+      message: "Logged out from all sessions successfully.",
     };
   },
 
