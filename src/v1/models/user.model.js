@@ -87,7 +87,11 @@ const UserSchema = new Schema(
       clientMessages: { type: Boolean, default: false },
       paymentReminders: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false },
-      theme: { type: String, default: "light", enum: ["light", "dark"] },
+      theme: {
+        type: String,
+        default: "light",
+        enum: ["light", "dark", "system"],
+      },
       language: { type: String, default: "en" },
       timezone: { type: String, default: "America/New_York" },
       currency: { type: String, default: "USD" },
