@@ -7,7 +7,7 @@ import {
   getSinglePattern,
   updatePattern,
   deletePattern,
-  getAll,
+  getPublicPatterns, // Updated
 } from "../controllers/pattern.controller.js";
 
 const router = express.Router();
@@ -19,8 +19,8 @@ router
   .all(methodNotAllowed);
 
 router
-  .route("/super")
-  .get(isAuth, getAll)
+  .route("/public") // Changed from /super
+  .get(getPublicPatterns) // No auth needed for public, remove isAuth if public access
   .all(methodNotAllowed);
 
 router

@@ -5,8 +5,7 @@ const { Schema } = mongoose;
 const PatternSchema = new Schema(
   {
     userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
+      type: String, // Changed to String to allow "general" for public patterns
       required: true,
     },
     name: {

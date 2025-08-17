@@ -1,11 +1,47 @@
-// This is a placeholder for your actual AI integration.
-// You would replace this with calls to an actual AI API (e.g., OpenAI DALL-E, Midjourney API, Stability AI).
-import axios from "axios";
-import dotenv from "dotenv";
+import fetch from "node-fetch"; // Ensure node-fetch is installed: npm i node-fetch
+import { uploadBase64ToCloudinary } from "./cloudinary.config.js"; // Assuming this exists
 
-dotenv.config();
+const HF_TOKEN = process.env.HF_TOKEN; // Add to .env: HF_TOKEN=your_huggingface_token (get from huggingface.co/settings/tokens)
+const IMAGE_MODEL = "runwayml/stable-diffusion-v1-5"; // Free model for text-to-image
+const TEXT_MODEL = "microsoft/phi-2"; // Free model for text generation (instruct-like)
 
-// Placeholder function for generating a fashion pattern based on criteria
+async function queryImage(prompt) {
+  const response = await fetch(
+    `https://api-inference.huggingface.co/models/${IMAGE_MODEL}`,
+    {
+      headers: { Authorization: `Bearer ${HF_TOKEN}` },
+      method: "POST",
+      body: JSON.stringify({ inputs: prompt }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.statusText}`);
+  }
+
+  const buffer = await response.buffer();
+  const base64 = buffer.toString("base64");
+  return `data:image/png;base64,${base64}`;
+}
+
+async function queryText(prompt) {
+  const response = await fetch(
+    `https://api-inference.huggingface.co/models/${TEXT_MODEL}`,
+    {
+      headers: { Authorization: `Bearer ${HF_TOKEN}` },
+      method: "POST",
+      body: JSON.stringify({ inputs: prompt }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  return json[0]?.generated_text || "";
+}
+
 export const generatePatternImage = async (
   garmentType,
   style,
@@ -14,46 +50,15 @@ export const generatePatternImage = async (
   occasion,
   additionalDetails
 ) => {
-  const prompt = `Generate a realistic fashion flat pattern for a ${style} ${garmentType} in ${fabricType}. Size: ${sizeRange}. Occasion: ${
-    occasion || "N/A"
-  }. Additional details: ${
-    additionalDetails || "None"
-  }. Provide a clean, white background for the pattern diagram.`;
-
-  // Example for a hypothetical AI image generation API
-  // You would replace this with actual API calls to DALL-E, Stability AI, etc.
-  try {
-    // This is a simulated call. In a real scenario, you'd call a service like:
-    // const response = await axios.post('YOUR_AI_IMAGE_GENERATION_API_URL', {
-    //   prompt: prompt,
-    //   // ... other parameters like image size, model, etc.
-    // }, {
-    //   headers: {
-    //     'Authorization': `Bearer ${process.env.AI_API_KEY}`,
-    //     'Content-Type': 'application/json'
-    //   }
-    // });
-
-    // For demonstration, return a dummy image URL. In reality, this would be an actual generated image.
-    // A real AI would return an image file or base64 string, which you'd then upload to Cloudinary.
-    const dummyImageUrl =
-      "https://via.placeholder.com/600x400?text=AI+Generated+Pattern";
-    console.log("Simulated AI pattern generation for prompt:", prompt);
-    return dummyImageUrl; // In a real scenario, this would be the actual image data/buffer/URL
-  } catch (error) {
-    console.error(
-      "Error generating pattern image with AI:",
-      error.response?.data || error.message
-    );
-    throw new Error("Failed to generate pattern image with AI.");
-  }
+  const prompt = `A detailed sewing pattern diagram for a ${style} ${garmentType} made of ${fabricType}, size ${sizeRange}, suitable for ${
+    occasion || "any occasion"
+  }, ${additionalDetails || ""}. Technical line drawing with measurements.`;
+  const base64 = await queryImage(prompt);
+  const url = await uploadBase64ToCloudinary(base64, "ai-patterns");
+  return url;
 };
 
-// Placeholder function for generating a sample image of the pattern on a real human/clothing
-export const generateFashionSampleImage = async (
-  patternAttributes,
-  imageUrl
-) => {
+export const generateFashionSampleImage = async (patternData, patternUrl) => {
   const {
     garmentType,
     style,
@@ -61,27 +66,49 @@ export const generateFashionSampleImage = async (
     sizeRange,
     occasion,
     additionalDetails,
-  } = patternAttributes;
-  const prompt = `Show a realistic ${style} ${garmentType} made from ${fabricType}, based on the following pattern image: ${imageUrl}. The design should fit a ${sizeRange} figure. Occasion: ${
-    occasion || "N/A"
-  }. Details: ${additionalDetails || "None"}.`;
+  } = patternData;
+  const prompt = `A realistic fashion photo of a model wearing a ${style} ${garmentType} made of ${fabricType}, size ${sizeRange}, for ${
+    occasion || "any occasion"
+  }, ${additionalDetails || ""}. High quality, photorealistic.`;
+  const base64 = await queryImage(prompt);
+  const url = await uploadBase64ToCloudinary(base64, "ai-samples");
+  return url;
+};
 
-  try {
-    // This is a simulated call. In a real scenario, you'd call a service like:
-    // const response = await axios.post('YOUR_AI_IMAGE_GENERATION_API_URL_FOR_RENDER', {
-    //   prompt: prompt,
-    //   // ... other parameters including the pattern image URL for image-to-image generation
-    // });
+export const generateInstructions = async (patternData) => {
+  const {
+    garmentType,
+    style,
+    fabricType,
+    sizeRange,
+    occasion,
+    additionalDetails,
+  } = patternData;
+  const prompt = `Generate a numbered list of 7-10 step-by-step sewing instructions for creating a ${style} ${garmentType} made of ${fabricType}, size ${sizeRange}, for ${
+    occasion || "any occasion"
+  }, with details: ${additionalDetails || "none"}. Start with "1."`;
+  const text = await queryText(prompt);
+  return text
+    .split("\n")
+    .filter((line) => line.trim().startsWith(/\d+\./))
+    .map((line) => line.trim());
+};
 
-    const dummySampleUrl =
-      "https://via.placeholder.com/600x800?text=AI+Generated+Sample";
-    console.log("Simulated AI fashion sample generation for prompt:", prompt);
-    return dummySampleUrl; // In a real scenario, this would be the actual image data/buffer/URL
-  } catch (error) {
-    console.error(
-      "Error generating fashion sample image with AI:",
-      error.response?.data || error.message
-    );
-    throw new Error("Failed to generate fashion sample image with AI.");
-  }
+export const generateMaterials = async (patternData) => {
+  const {
+    garmentType,
+    style,
+    fabricType,
+    sizeRange,
+    occasion,
+    additionalDetails,
+  } = patternData;
+  const prompt = `Generate a bullet list of 5-8 materials needed for sewing a ${style} ${garmentType} made of ${fabricType}, size ${sizeRange}, for ${
+    occasion || "any occasion"
+  }, with details: ${additionalDetails || "none"}. Start with "- "`;
+  const text = await queryText(prompt);
+  return text
+    .split("\n")
+    .filter((line) => line.trim().startsWith("-"))
+    .map((line) => line.trim().slice(2));
 };

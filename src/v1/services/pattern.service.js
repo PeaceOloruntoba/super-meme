@@ -7,18 +7,12 @@ import {
 import {
   generatePatternImage,
   generateFashionSampleImage,
+  generateInstructions,
+  generateMaterials,
 } from "../../utils/aiGenerator.js";
 import mongoose from "mongoose";
 
 const patternService = {
-  /**
-   * Creates a new pattern, either AI-generated or user-drawn.
-   * @param {string} userId - The ID of the user.
-   * @param {object} patternData - The pattern details (garmentType, style, etc.).
-   * @param {string} [base64Image] - Optional: Base64 string of a user-drawn pattern.
-   * @param {boolean} [isAiGeneratedRequest=false] - If true, triggers AI generation.
-   * @returns {Promise<object>} The newly created pattern.
-   */
   createPattern: async (
     userId,
     patternData,
@@ -28,6 +22,8 @@ const patternService = {
     try {
       const imageUrls = [];
       let finalIsAiGenerated = false;
+      let instructions = [];
+      let materials = [];
 
       if (isAiGeneratedRequest) {
         const generatedPatternUrl = await generatePatternImage(
@@ -46,6 +42,9 @@ const patternService = {
         );
         imageUrls.push(fashionSampleUrl);
 
+        instructions = await generateInstructions(patternData);
+        materials = await generateMaterials(patternData);
+
         finalIsAiGenerated = true;
       } else if (base64Image) {
         const uploadedUrl = await uploadBase64ToCloudinary(
@@ -61,9 +60,11 @@ const patternService = {
 
       const newPattern = await Pattern.create({
         ...patternData,
-        userId,
+        userId, // Assume userId is string
         image_urls: imageUrls,
         isAiGenerated: finalIsAiGenerated,
+        instructions,
+        materials,
       });
 
       return {
@@ -85,30 +86,24 @@ const patternService = {
     }
   },
 
-  /**
-   * Retrieves all patterns
-   * @returns {Promise<object>} An array of patterns.
-   */
-  getAll: async (userId) => {
+  getPublicPatterns: async () => {
+    // Renamed from getAll, for public (general)
     try {
-      const patterns = await Pattern.find().sort({ createdAt: -1 });
+      const patterns = await Pattern.find({ userId: "general" }).sort({
+        createdAt: -1,
+      });
       return {
         success: true,
         statusCode: 200,
-        message: "Patterns retrieved successfully.",
+        message: "Public patterns retrieved successfully.",
         data: { patterns },
       };
     } catch (error) {
-      console.error("Error retrieving all patterns:", error);
+      console.error("Error retrieving public patterns:", error);
       throw ApiError.internalServerError("Failed to retrieve patterns.");
     }
   },
 
-  /**
-   * Retrieves all patterns for a specific user.
-   * @param {string} userId - The ID of the user.
-   * @returns {Promise<object>} An array of patterns.
-   */
   getAllPatterns: async (userId) => {
     try {
       const patterns = await Pattern.find({ userId }).sort({ createdAt: -1 });
@@ -124,22 +119,23 @@ const patternService = {
     }
   },
 
-  /**
-   * Retrieves a single pattern by its ID.
-   * @param {string} patternId - The ID of the pattern.
-   * @param {string} userId - The ID of the user.
-   * @returns {Promise<object>} The single pattern.
-   */
   getSinglePattern: async (patternId, userId) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
         throw ApiError.badRequest("Invalid Pattern ID format.");
       }
 
-      const pattern = await Pattern.findOne({ _id: patternId, userId });
+      const pattern = await Pattern.findOne({ _id: patternId });
 
       if (!pattern) {
         throw ApiError.notFound("Pattern not found.");
+      }
+
+      // Allow access if it's user's own or public
+      if (pattern.userId !== userId && pattern.userId !== "general") {
+        throw ApiError.forbidden(
+          "You don't have permission to access this pattern."
+        );
       }
 
       return {
@@ -157,24 +153,21 @@ const patternService = {
     }
   },
 
-  /**
-   * Updates an existing pattern.
-   * @param {string} patternId - The ID of the pattern to update.
-   * @param {string} userId - The ID of the user.
-   * @param {object} updateData - The data to update.
-   * @param {string} [base64Image] - Optional: New base64 image if user wants to replace it.
-   * @returns {Promise<object>} The updated pattern.
-   */
   updatePattern: async (patternId, userId, updateData, base64Image = null) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
         throw ApiError.badRequest("Invalid Pattern ID format.");
       }
 
-      const existingPattern = await Pattern.findOne({ _id: patternId, userId });
+      const existingPattern = await Pattern.findById(patternId);
       if (!existingPattern) {
-        throw ApiError.notFound(
-          "Pattern not found or you don't have permission to update it."
+        throw ApiError.notFound("Pattern not found.");
+      }
+
+      if (existingPattern.userId !== userId) {
+        // TODO: Add admin check here, e.g., if (!req.user.isAdmin) throw forbidden
+        throw ApiError.forbidden(
+          "You don't have permission to update this pattern."
         );
       }
 
@@ -198,8 +191,8 @@ const patternService = {
         }
       }
 
-      const updatedPattern = await Pattern.findOneAndUpdate(
-        { _id: patternId, userId },
+      const updatedPattern = await Pattern.findByIdAndUpdate(
+        patternId,
         { $set: updateData },
         { new: true, runValidators: true }
       );
@@ -222,37 +215,38 @@ const patternService = {
     }
   },
 
-  /**
-   * Deletes a pattern.
-   * @param {string} patternId - The ID of the pattern to delete.
-   * @param {string} userId - The ID of the user.
-   * @returns {Promise<object>} A confirmation message.
-   */
   deletePattern: async (patternId, userId) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
         throw ApiError.badRequest("Invalid Pattern ID format.");
       }
 
-      const pattern = await Pattern.findOneAndDelete({
-        _id: patternId,
-        userId,
-      });
+      const pattern = await Pattern.findById(patternId);
 
       if (!pattern) {
-        throw ApiError.notFound(
-          "Pattern not found or you don't have permission to delete it."
+        throw ApiError.notFound("Pattern not found.");
+      }
+
+      if (pattern.userId !== userId) {
+        // TODO: Add admin check here
+        throw ApiError.forbidden(
+          "You don't have permission to delete this pattern."
         );
       }
 
-      for (const url of pattern.image_urls) {
-        await deleteFileFromCloudinary(url);
-      }
+      // Instead of deleting, move to general (public)
+      pattern.userId = "general";
+      await pattern.save();
+
+      // Optionally, delete images if needed, but keeping for public
+      // for (const url of pattern.image_urls) {
+      //   await deleteFileFromCloudinary(url);
+      // }
 
       return {
         success: true,
         statusCode: 200,
-        message: "Pattern deleted successfully.",
+        message: "Pattern moved to public successfully.",
         data: null,
       };
     } catch (error) {
