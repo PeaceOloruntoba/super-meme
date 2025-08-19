@@ -8,22 +8,23 @@ import {
   getSingleEvent,
   updateEvent,
 } from "../controllers/calendar.controller.js";
+import { requireFeature } from "../../middlewares/planEnforcement.js";
 
 const router = express.Router();
 
 // Base route for creating and getting all events
 router
   .route("/")
-  .post(isAuth, createEvent)
-  .get(isAuth, getAllEvents)
+  .post(isAuth, requireFeature("hasCalendarScheduling"), createEvent)
+  .get(isAuth, requireFeature("hasCalendarScheduling"), getAllEvents)
   .all(methodNotAllowed);
 
 // Routes for specific event actions (get, update, delete)
 router
   .route("/:eventId")
-  .get(isAuth, getSingleEvent)
-  .patch(isAuth, updateEvent)
-  .delete(isAuth, deleteEvent)
+  .get(isAuth, requireFeature("hasCalendarScheduling"), getSingleEvent)
+  .patch(isAuth, requireFeature("hasCalendarScheduling"), updateEvent)
+  .delete(isAuth, requireFeature("hasCalendarScheduling"), deleteEvent)
   .all(methodNotAllowed);
 
 export default router;

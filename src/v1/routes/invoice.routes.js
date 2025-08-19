@@ -10,12 +10,13 @@ import {
   updateInvoice,
   deleteInvoice,
 } from "../controllers/invoice.controller.js";
+import { requireFeature } from "../../middlewares/planEnforcement.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(isAuth, createInvoice)
+  .post(isAuth, requireFeature("hasInvoiceGeneration"), createInvoice)
   .get(isAuth, getAllInvoices)
   .all(methodNotAllowed);
 

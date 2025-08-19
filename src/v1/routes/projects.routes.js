@@ -9,12 +9,13 @@ import {
   updateProject,
   deleteProject,
 } from "../controllers/projects.controller.js";
+import { checkClientLimit } from "../../middlewares/planEnforcement.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(isAuth, createProject)
+  .post(isAuth, checkClientLimit, createProject)
   .get(isAuth, getAllProjects)
   .all(methodNotAllowed);
 

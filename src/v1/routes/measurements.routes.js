@@ -9,12 +9,13 @@ import {
   getSingleMeasurement,
   updateMeasurement,
 } from "../controllers/measurements.controller.js";
+import { requireFeature } from "../../middlewares/planEnforcement.js";
 
 const router = express.Router({ mergeParams: true });
 
 router
   .route("/")
-  .post(isAuth, createMeasurement)
+  .post(isAuth, requireFeature("hasAdvancedMeasurements"), createMeasurement)
   .get(isAuth, getAllMeasurements)
   .all(methodNotAllowed);
 

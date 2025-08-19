@@ -8,12 +8,13 @@ import {
   updateClient,
   deleteClient,
 } from "../controllers/client.controller.js";
+import { checkClientLimit } from "../../middlewares/planEnforcement.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(isAuth, createClient)
+  .post(isAuth, checkClientLimit, createClient)
   .get(isAuth, getAllClients)
   .all(methodNotAllowed);
 
