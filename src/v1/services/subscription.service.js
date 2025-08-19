@@ -11,8 +11,8 @@ import stripe, {
 
 const subscriptionService = {
   stripePriceIds: {
-    premium: "price_1PXXXPXXXPXXXPXXX",
-    enterprise: "price_1QXXXQXXXQXXXQXXX",
+    premium: "price_1RxqOcRpcgBDjLSAxTUdiLcG",
+    enterprise: "price_1RxqP0RpcgBDjLSAVo8ko9k1",
   }
   /**
    * Subscribes a user to a new plan using Stripe.
