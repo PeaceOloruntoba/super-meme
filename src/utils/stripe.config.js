@@ -91,7 +91,7 @@ export const createStripeSubscription = async (stripeCustomerId, priceId) => {
  */
 export const cancelStripeSubscription = async (stripeSubscriptionId) => {
   try {
-    const deletedSubscription = await stripe.subscriptions.del(
+    const deletedSubscription = await stripe.subscriptions.cancel(
       stripeSubscriptionId
     );
     return deletedSubscription;

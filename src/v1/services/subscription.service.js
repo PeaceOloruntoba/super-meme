@@ -13,14 +13,14 @@ const subscriptionService = {
   stripePriceIds: {
     premium: "price_1RxqOcRpcgBDjLSAxTUdiLcG",
     enterprise: "price_1RxqP0RpcgBDjLSAVo8ko9k1",
-  }
+  },
   /**
    * Subscribes a user to a new plan using Stripe.
    * This function handles both upgrading and initial subscription.
    * @param {string} userId - The user's ID.
    * @param {string} planId - The ID of the plan to subscribe to.
    * @param {string} [paymentMethodId] - The Stripe payment method for paid plans.
-   */,
+   */
 
   subscribe: async (userId, planId, paymentMethodId = null) => {
     try {
@@ -84,7 +84,7 @@ const subscriptionService = {
       const subscriptionData = {
         userId,
         planId,
-        status: stripeSubscription.status,
+        status: "active",
         stripeCustomerId: stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         startDate: new Date(stripeSubscription.current_period_start * 1000),
@@ -143,7 +143,7 @@ const subscriptionService = {
 
       await cancelStripeSubscription(subscription.stripeSubscriptionId); // Update the subscription status in your database
 
-      subscription.status = "cancelled";
+      subscription.status = "canceled";
       await subscription.save(); // Update the user's plan to "free" after the current period ends // This logic should be handled by a webhook, but for a simplified flow, we'll update it here. // The 'isSubActive' field should also be managed by webhooks for true accuracy.
 
       await User.findByIdAndUpdate(userId, {
@@ -154,7 +154,7 @@ const subscriptionService = {
       return {
         success: true,
         message:
-          "Subscription successfully cancelled. It will remain active until the end of the current billing period.",
+          "Subscription successfully canceled. It will remain active until the end of the current billing period.",
         statusCode: 200,
       };
     } catch (error) {
@@ -270,7 +270,7 @@ const subscriptionService = {
           ); // Update database to reflect cancellation
 
         await Subscription.findByIdAndUpdate(subscription._id, {
-          status: "cancelled",
+          status: "canceled",
         });
         await User.findByIdAndUpdate(subscription.userId, {
           plan: "free",

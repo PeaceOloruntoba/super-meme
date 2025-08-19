@@ -17,7 +17,7 @@ const SubscriptionSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["trialing", "active", "cancelled", "overdue"],
+      enum: ["trialing", "active", "canceled", "overdue"],
       default: "trialing",
     },
     stripeCustomerId: String,
