@@ -46,10 +46,8 @@ export const uploadBase64ToCloudinary = async (base64String, folderName) => {
     const result = await cloudinary.uploader.upload(base64String, {
       folder: folderName,
     });
-    console.log(result);
     return result.secure_url;
   } catch (error) {
-    console.log(error);
     console.error("Cloudinary upload error:", error);
     throw new Error("Failed to upload image to Cloudinary.");
   }
