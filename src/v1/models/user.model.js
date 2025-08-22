@@ -96,7 +96,7 @@ const UserSchema = new Schema(
         enum: ["light", "dark", "system"],
       },
       language: { type: String, default: "en" },
-      timezone: { type: String, default: "America/New_York" },
+      timezone: { type: String, default: "Europe/Berlin" },
       currency: { type: String, default: "USD" },
       measurementUnit: {
         type: String,
