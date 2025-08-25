@@ -4,6 +4,7 @@ import ApiError from "../../utils/apiError.js";
 import {
   initializeSubscriptionPayment,
   cancelFlutterwaveSubscription,
+  verifyTransaction,
 } from "../../utils/flutterwave.config.js";
 
 const subscriptionService = {
@@ -330,11 +331,99 @@ const subscriptionService = {
 
   /**
    * Gets the billing history (invoices) for a user (unsupported; returns empty list).
-   * @param {string} userId - The user's ID.
-   * @returns {array}
    */
   getInvoices: async (userId) => {
     return [];
+  },
+
+  /**
+   * Verifies Flutterwave redirect using transaction_id or tx_ref and activates subscription.
+   * Expects a pending Subscription with matching flwTxRef created during subscribe().
+   */
+  verifyAndActivateFromCallback: async ({ status, tx_ref, transaction_id }) => {
+    try {
+      const verifyKey = transaction_id || tx_ref;
+      if (!verifyKey) {
+        throw ApiError.badRequest(
+          "transaction_id or tx_ref is required.",
+          "VERIFY_MISSING_KEY"
+        );
+      }
+
+      const verification = await verifyTransaction(verifyKey);
+      const verifiedStatus = verification?.data?.status || verification?.status;
+      const verifiedTxRef = verification?.data?.tx_ref || tx_ref;
+
+      if (verifiedStatus !== "successful") {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Payment not successful yet. Please wait or retry.",
+          data: { status: verifiedStatus, tx_ref: verifiedTxRef },
+        };
+      }
+
+      // Try to locate the pending subscription by tx_ref first
+      let subscription = await Subscription.findOne({ flwTxRef: verifiedTxRef });
+      let planId;
+      let userId;
+
+      if (!subscription) {
+        const meta = verification?.data?.meta || {};
+        userId = meta.userId;
+        planId = meta.planId;
+        if (!userId || !planId) {
+          throw ApiError.notFound(
+            "Pending subscription or verification meta not found.",
+            "SUB_PENDING_NOT_FOUND"
+          );
+        }
+      } else {
+        userId = subscription.userId;
+        planId = subscription.planId;
+      }
+
+      const cfg = subscriptionService.planConfigs[planId];
+      if (!cfg) {
+        throw ApiError.badRequest("Invalid plan.", "VERIFY_INVALID_PLAN");
+      }
+
+      const startDate = new Date();
+      const dueDate = new Date(startDate.getTime() + cfg.intervalDays * 24 * 60 * 60 * 1000);
+
+      const updated = await Subscription.findOneAndUpdate(
+        { userId },
+        {
+          userId,
+          planId,
+          status: "active",
+          flwTxRef: verifiedTxRef,
+          startDate,
+          dueDate,
+        },
+        { new: true, upsert: true, runValidators: true }
+      );
+
+      await User.findByIdAndUpdate(userId, {
+        plan: planId,
+        isSubActive: true,
+        subscriptionId: updated._id,
+      });
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Subscription activated.",
+        data: { planId, startDate: updated.startDate, dueDate: updated.dueDate },
+      };
+    } catch (error) {
+      console.error("Verify & activate from callback failed:", error);
+      if (error instanceof ApiError) throw error;
+      throw ApiError.internalServerError(
+        "Failed to verify and activate subscription.",
+        "VERIFY_ACTIVATE_FAILED"
+      );
+    }
   },
 
   /**

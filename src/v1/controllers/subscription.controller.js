@@ -74,3 +74,23 @@ export const updatePaymentMethod = asyncWrapper(async (req, res, next) => {
   );
   res.status(result.statusCode).json(result);
 });
+
+/**
+ * @desc    Controller to verify Flutterwave redirect and activate subscription.
+ * @route   GET /api/v1/subscriptions/verify
+ * @access  Public (secured via Flutterwave verify API)
+ */
+export const verifyCallback = asyncWrapper(async (req, res, next) => {
+  const { status, tx_ref, transaction_id } = req.query;
+  if (!status || (!tx_ref && !transaction_id)) {
+    throw ApiError.badRequest("Missing required query params: status and tx_ref or transaction_id");
+  }
+
+  const result = await subscriptionService.verifyAndActivateFromCallback({
+    status: String(status),
+    tx_ref: tx_ref ? String(tx_ref) : undefined,
+    transaction_id: transaction_id ? String(transaction_id) : undefined,
+  });
+
+  res.status(result.statusCode).json(result);
+});

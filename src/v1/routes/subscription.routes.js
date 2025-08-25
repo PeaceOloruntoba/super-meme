@@ -6,6 +6,7 @@ import {
   cancelSubscription,
   getSubscriptionDetails,
   updatePaymentMethod,
+  verifyCallback,
 } from "../controllers/subscription.controller.js";
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router
   .route("/payment-method")
   .patch(isAuth, updatePaymentMethod)
   .all(methodNotAllowed);
+
+// Public endpoint hit by frontend after Flutterwave redirect
+router.route("/verify").get(verifyCallback).all(methodNotAllowed);
 
 export default router;

@@ -89,7 +89,11 @@ export const initializeSubscriptionPayment = async ({
 
 export const verifyTransaction = async (tx_ref) => {
   try {
-    const res = await flw.Transaction.verify({ id: tx_ref, tx_ref });
+    if (tx_ref && /^\d+$/.test(String(tx_ref))) {
+      const res = await flw.Transaction.verify({ id: String(tx_ref) });
+      return res;
+    }
+    const res = await flw.Transaction.verify({ tx_ref: String(tx_ref) });
     return res;
   } catch (error) {
     console.error("Flutterwave transaction verify failed:", error);
