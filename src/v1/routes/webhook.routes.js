@@ -1,34 +1,27 @@
 import express from "express";
-import Stripe from "stripe";
-import dotenv from "dotenv";
 import subscriptionService from "../services/subscription.service.js";
-
-dotenv.config();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+import { verifyWebhookSignature } from "../../utils/flutterwave.config.js";
 
 const router = express.Router();
 
 router.post(
   "/",
-  express.raw({ type: "application/json" }),
+  express.json({ type: "application/json" }),
   async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
-
     try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
+      verifyWebhookSignature(req);
     } catch (err) {
-      console.error("Webhook signature verification failed.", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+      console.error("Flutterwave webhook verification failed:", err.message);
+      return res.status(401).send(`Webhook Error: ${err.message}`);
     }
 
-    await subscriptionService.handleStripeWebhook(event);
-
-    res.json({ received: true });
+    try {
+      await subscriptionService.handleFlutterwaveWebhook(req.body);
+      res.json({ received: true });
+    } catch (err) {
+      console.error("Webhook processing failed:", err);
+      res.status(500).json({ success: false, message: "Webhook processing failed" });
+    }
   }
 );
 

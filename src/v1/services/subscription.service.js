@@ -1,25 +1,28 @@
 import User from "../models/user.model.js";
 import Subscription from "../models/subscription.model.js";
 import ApiError from "../../utils/apiError.js";
-import stripe, {
-  findOrCreateStripeCustomer,
-  attachPaymentMethod,
-  createStripeSubscription,
-  cancelStripeSubscription,
-  updateStripeSubscription,
-} from "../../utils/stripe.config.js";
+import {
+  initializeSubscriptionPayment,
+  cancelFlutterwaveSubscription,
+} from "../../utils/flutterwave.config.js";
 
 const subscriptionService = {
-  stripePriceIds: {
-    premium: "price_1RxqOcRpcgBDjLSAxTUdiLcG",
-    enterprise: "price_1RxqP0RpcgBDjLSAVo8ko9k1",
+  planConfigs: {
+    premium: {
+      amount: Number(process.env.FLW_AMOUNT_PREMIUM || 1000),
+      intervalDays: Number(process.env.FLW_INTERVAL_DAYS_PREMIUM || 30),
+    },
+    enterprise: {
+      amount: Number(process.env.FLW_AMOUNT_ENTERPRISE || 3000),
+      intervalDays: Number(process.env.FLW_INTERVAL_DAYS_ENTERPRISE || 30),
+    },
   },
   /**
-   * Subscribes a user to a new plan using Stripe.
-   * This function handles both upgrading and initial subscription.
+   * Subscribes a user to a new plan using Flutterwave.
+   * For paid plans, returns a hosted payment link the client should open to complete payment.
    * @param {string} userId - The user's ID.
    * @param {string} planId - The ID of the plan to subscribe to.
-   * @param {string} [paymentMethodId] - The Stripe payment method for paid plans.
+   * @param {string} [paymentMethodId] - Ignored for Flutterwave hosted payment.
    */
 
   subscribe: async (userId, planId, paymentMethodId = null) => {
@@ -30,46 +33,11 @@ const subscriptionService = {
       }
 
       const isPaidPlan = planId !== "free";
-      if (isPaidPlan && !paymentMethodId) {
-        throw ApiError.badRequest(
-          "Payment method is required for paid plans.",
-          "PAYMENT_METHOD_REQUIRED"
-        );
-      }
-
-      const stripeCustomerId = await findOrCreateStripeCustomer(
-        user.email,
-        `${user.firstName} ${user.lastName}`
-      );
-
-      if (isPaidPlan) {
-        await attachPaymentMethod(stripeCustomerId, paymentMethodId);
-      }
-
-      let stripeSubscription;
-      const stripePriceId = subscriptionService.stripePriceIds[planId];
       const existingSubscription = await Subscription.findOne({ userId });
 
-      if (existingSubscription && existingSubscription.stripeSubscriptionId) {
-        // Update existing subscription in Stripe
-        stripeSubscription = await updateStripeSubscription(
-          existingSubscription.stripeSubscriptionId,
-          stripePriceId
-        );
-      } else if (isPaidPlan) {
-        // Create a new subscription in Stripe for a paid plan
-        stripeSubscription = await createStripeSubscription(
-          stripeCustomerId,
-          stripePriceId
-        );
-      } else {
+      if (!isPaidPlan) {
         // User is switching to the free plan
-        if (existingSubscription && existingSubscription.stripeSubscriptionId) {
-          await cancelStripeSubscription(
-            existingSubscription.stripeSubscriptionId
-          );
-          await existingSubscription.deleteOne();
-        }
+        if (existingSubscription) await existingSubscription.deleteOne();
 
         await User.findByIdAndUpdate(userId, {
           plan: "free",
@@ -84,55 +52,61 @@ const subscriptionService = {
         };
       }
 
-      const subscriptionData = {
-        userId,
-        planId,
-        status: "active",
-        stripeCustomerId: stripeCustomerId,
-        stripeSubscriptionId: stripeSubscription.id,
-        startDate: new Date(stripeSubscription.current_period_start * 1000),
-        dueDate: new Date(stripeSubscription.current_period_end * 1000),
-        paymentMethod: paymentMethodId,
-      };
+      const cfg = subscriptionService.planConfigs[planId];
+      if (!cfg) {
+        throw ApiError.badRequest("Invalid planId.", "INVALID_PLAN");
+      }
 
-      const newSubscription = await Subscription.findOneAndUpdate(
+      const { tx_ref, link } = await initializeSubscriptionPayment({
+        amount: cfg.amount,
+        currency: process.env.FLW_CURRENCY || "USD",
+        customer: {
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+        },
+        planKey: planId,
+        redirect_url: process.env.FLW_REDIRECT_URL || undefined,
+        meta: { userId: user._id.toString(), planId },
+      });
+
+      const pending = await Subscription.findOneAndUpdate(
         { userId },
-        subscriptionData,
+        {
+          userId,
+          planId,
+          status: "pending",
+          flwTxRef: tx_ref,
+        },
         { new: true, upsert: true, runValidators: true }
       );
 
       await User.findByIdAndUpdate(userId, {
         plan: planId,
-        isSubActive: true,
-        subscriptionId: newSubscription._id,
+        isSubActive: false,
+        subscriptionId: pending._id,
       });
 
       return {
         success: true,
-        message: `Successfully subscribed to the ${planId} plan.`,
+        message: `Proceed to payment for the ${planId} plan.`,
         statusCode: 200,
-        data: { subscription: newSubscription },
+        data: { paymentLink: link, tx_ref },
       };
     } catch (error) {
       console.error("Subscription failed:", error);
       if (error instanceof ApiError) {
         throw error;
       }
-
-      if (error.type === "StripeCardError") {
-        throw ApiError.badRequest(error.message, "STRIPE_CARD_ERROR");
-      }
       throw ApiError.internalServerError(
         "Failed to subscribe to the plan.",
         "SUBSCRIBE_FAILED"
       );
     }
-  }
+  },
   /**
-   * Cancels a user's paid subscription via Stripe.
+   * Cancels a user's paid subscription via Flutterwave.
    * @param {string} userId - The user's ID.
-   */,
-
+   */
   cancelSubscription: async (userId) => {
     try {
       const user = await User.findById(userId);
@@ -141,27 +115,29 @@ const subscriptionService = {
       }
 
       const subscription = await Subscription.findOne({ userId });
-      if (!subscription || !subscription.stripeSubscriptionId) {
+      if (!subscription) {
         throw ApiError.badRequest(
           "User does not have an active paid subscription to cancel.",
           "NO_ACTIVE_SUBSCRIPTION"
         );
-      } // Cancel the subscription at the end of the current billing period
+      }
 
-      await cancelStripeSubscription(subscription.stripeSubscriptionId); // Update the subscription status in your database
+      if (subscription.flwSubscriptionId) {
+        await cancelFlutterwaveSubscription(subscription.flwSubscriptionId);
+      }
 
       subscription.status = "canceled";
-      await subscription.save(); // Update the user's plan to "free" after the current period ends // This logic should be handled by a webhook, but for a simplified flow, we'll update it here. // The 'isSubActive' field should also be managed by webhooks for true accuracy.
+      await subscription.save();
 
       await User.findByIdAndUpdate(userId, {
-        plan: "free", // isSubActive: false, // This is incorrect, the user is still active until the period ends.
+        plan: "free",
         subscriptionId: null,
       });
 
       return {
         success: true,
         message:
-          "Subscription successfully canceled. It will remain active until the end of the current billing period.",
+          "Subscription successfully canceled.",
         statusCode: 200,
       };
     } catch (error) {
@@ -174,11 +150,11 @@ const subscriptionService = {
         "CANCEL_SUBSCRIPTION_FAILED"
       );
     }
-  }
+  },
   /**
    * Retrieves the current subscription details for a user.
    * @param {string} userId - The user's ID.
-   */,
+   */
 
   getSubscriptionStatus: async (userId) => {
     try {
@@ -222,99 +198,70 @@ const subscriptionService = {
         "SUBSCRIPTION_STATUS_FAILED"
       );
     }
-  }
+  },
   /**
-   * Webhook handler for Stripe events.
-   * This is a crucial part of the integration to keep your database in sync with Stripe.
-   * @param {object} event - The Stripe webhook event object.
-   */,
+   * Webhook handler for Flutterwave events.
+   * @param {object} payload - The Flutterwave webhook payload.
+   */
 
-  handleStripeWebhook: async (event) => {
-    console.log(`Received Stripe event: ${event.type}`);
+  handleFlutterwaveWebhook: async (payload) => {
+    const event = payload?.event;
+    console.log(`Received Flutterwave event: ${event}`);
 
-    switch (event.type) {
-      case "customer.subscription.updated":
-      case "customer.subscription.created": {
-        const stripeSubscription = event.data.object;
-        const user = await User.findOne({
-          stripeCustomerId: stripeSubscription.customer,
-        });
-        if (!user) return console.error("User not found for Stripe customer.");
+    if (event === "charge.completed") {
+      const data = payload.data || {};
+      if (data.status === "successful") {
+        const tx_ref = data.tx_ref;
+        const meta = data.meta || {};
+        const userId = meta.userId;
+        const planId = meta.planId;
+        if (!userId || !planId) return;
 
-        const planId =
-          stripeSubscription.items.data[0].price.id ===
-          subscriptionService.stripePriceIds.premium
-            ? "premium"
-            : "enterprise";
+        const cfg = subscriptionService.planConfigs[planId];
+        if (!cfg) return;
 
-        const subscriptionData = {
-          userId: user._id,
-          planId,
-          status: stripeSubscription.status,
-          stripeCustomerId: stripeSubscription.customer,
-          stripeSubscriptionId: stripeSubscription.id,
-          startDate: new Date(stripeSubscription.current_period_start * 1000),
-          dueDate: new Date(stripeSubscription.current_period_end * 1000),
-        };
+        const startDate = new Date();
+        const dueDate = new Date(startDate.getTime() + cfg.intervalDays * 24 * 60 * 60 * 1000);
 
-        await Subscription.findOneAndUpdate(
-          { userId: user._id },
-          subscriptionData,
+        const updated = await Subscription.findOneAndUpdate(
+          { userId },
+          {
+            planId,
+            status: "active",
+            flwTxRef: tx_ref,
+            startDate,
+            dueDate,
+          },
           { new: true, upsert: true, runValidators: true }
         );
 
-        await User.findByIdAndUpdate(user._id, {
+        await User.findByIdAndUpdate(userId, {
           plan: planId,
           isSubActive: true,
+          subscriptionId: updated._id,
         });
-        break;
       }
+      return;
+    }
 
-      case "customer.subscription.deleted": {
-        const stripeSubscription = event.data.object;
-        const subscription = await Subscription.findOne({
-          stripeSubscriptionId: stripeSubscription.id,
-        });
-        if (!subscription)
-          return console.error(
-            "Subscription not found for Stripe subscription ID."
-          ); // Update database to reflect cancellation
-
-        await Subscription.findByIdAndUpdate(subscription._id, {
-          status: "canceled",
-        });
+    if (event === "subscription.cancelled") {
+      const subId = payload?.data?.id;
+      if (!subId) return;
+      const subscription = await Subscription.findOneAndUpdate(
+        { flwSubscriptionId: subId },
+        { status: "canceled" },
+        { new: true }
+      );
+      if (subscription) {
         await User.findByIdAndUpdate(subscription.userId, {
           plan: "free",
           isSubActive: false,
         });
-        break;
       }
-
-      case "invoice.payment_succeeded": {
-        const stripeInvoice = event.data.object;
-        const stripeSubscriptionId = stripeInvoice.subscription;
-        if (stripeSubscriptionId) {
-          const subscription = await Subscription.findOneAndUpdate(
-            { stripeSubscriptionId },
-            {
-              status: "active",
-              dueDate: new Date(stripeInvoice.lines.data[0].period.end * 1000),
-            },
-            { new: true }
-          );
-          if (subscription) {
-            await User.findByIdAndUpdate(subscription.userId, {
-              isSubActive: true,
-            });
-          }
-        }
-        break;
-      }
-
-      default:
-        console.log(`Unhandled event type ${event.type}`);
-        break;
+      return;
     }
+
+    console.log(`Unhandled Flutterwave event ${event}`);
   },
 
   checkAndDeactivateExpiredSubscriptions: async () => {
@@ -327,7 +274,7 @@ const subscriptionService = {
         plan: { $ne: "free" },
         trialEndDate: { $lt: now },
         isSubActive: true,
-        subscriptionId: null, // Only target users without a paid Stripe subscription
+        subscriptionId: null,
       });
 
       if (usersToDeactivate.length > 0) {
@@ -350,34 +297,16 @@ const subscriptionService = {
   },
 
   /**
-   * Updates the payment method for a subscription.
+   * Updates the payment method for a subscription (unsupported for Flutterwave in this setup).
    * @param {string} userId - The user's ID.
-   * @param {string} paymentMethodId - The new Stripe payment method ID.
+   * @param {string} paymentMethodId - ignored
    */
   updatePaymentMethod: async (userId, paymentMethodId) => {
     try {
-      const subscription = await Subscription.findOne({ userId });
-      if (!subscription) {
-        throw ApiError.notFound(
-          "No active subscription found.",
-          "NO_ACTIVE_SUBSCRIPTION"
-        );
-      }
-
-      await attachPaymentMethod(subscription.stripeCustomerId, paymentMethodId);
-
-      await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        default_payment_method: paymentMethodId,
-      });
-
-      subscription.paymentMethod = paymentMethodId;
-      await subscription.save();
-
-      return {
-        success: true,
-        message: "Payment method updated successfully.",
-        statusCode: 200,
-      };
+      throw ApiError.badRequest(
+        "Updating payment method is not supported via API for Flutterwave in this setup.",
+        "FLW_PM_UPDATE_UNSUPPORTED"
+      );
     } catch (error) {
       console.error("Payment method update failed:", error);
       if (error instanceof ApiError) {
@@ -391,40 +320,21 @@ const subscriptionService = {
   },
 
   /**
-   * Gets the payment method details for a user.
+   * Gets the payment method details for a user (unsupported; returns null).
    * @param {string} userId - The user's ID.
-   * @returns {object|null} - Payment method details or null.
+   * @returns {object|null}
    */
   getPaymentMethodDetails: async (userId) => {
-    const subscription = await Subscription.findOne({ userId });
-    if (!subscription || !subscription.paymentMethod) return null;
-
-    const pm = await stripe.paymentMethods.retrieve(subscription.paymentMethod);
-    return {
-      brand: pm.card.brand.toUpperCase(),
-      last4: pm.card.last4,
-      exp: `${pm.card.exp_month}/${pm.card.exp_year % 100}`,
-    };
+    return null;
   },
 
   /**
-   * Gets the billing history (invoices) for a user.
+   * Gets the billing history (invoices) for a user (unsupported; returns empty list).
    * @param {string} userId - The user's ID.
-   * @returns {array} - Array of invoice objects.
+   * @returns {array}
    */
   getInvoices: async (userId) => {
-    const subscription = await Subscription.findOne({ userId });
-    if (!subscription) return [];
-
-    const invoices = await stripe.invoices.list({
-      subscription: subscription.stripeSubscriptionId,
-    });
-
-    return invoices.data.map((i) => ({
-      date: new Date(i.created * 1000).toLocaleDateString(),
-      amount: `$${(i.amount_paid / 100).toFixed(2)}`,
-      status: i.status.charAt(0).toUpperCase() + i.status.slice(1),
-    }));
+    return [];
   },
 
   /**

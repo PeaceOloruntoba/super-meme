@@ -4,7 +4,6 @@ import morgan from "morgan";
 import cors from "cors";
 import dotenv from "dotenv";
 import cron from "node-cron";
-import Stripe from "stripe";
 
 dotenv.config();
 
@@ -24,11 +23,12 @@ import subscriptionRoutesV1 from "./src/v1/routes/subscription.routes.js";
 import webhookRoutesV1 from "./src/v1/routes/webhook.routes.js";
 import dashboardRoutesV1 from "./src/v1/routes/dashboard.routes.js";
 import analyticsRoutesV1 from "./src/v1/routes/analytics.routes.js";
+import subscriptionService from "./src/v1/services/subscription.service.js";
 
 const app = express();
 const port = process.env.PORT || 8080;
 
-app.use("/webhook/stripe", webhookRoutesV1);
+app.use("/webhook/flutterwave", webhookRoutesV1);
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));

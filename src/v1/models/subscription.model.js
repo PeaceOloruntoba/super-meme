@@ -17,18 +17,19 @@ const SubscriptionSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["trialing", "active", "canceled", "overdue"],
-      default: "trialing",
+      enum: ["pending", "trialing", "active", "canceled", "overdue"],
+      default: "pending",
     },
-    stripeCustomerId: String,
-    stripeSubscriptionId: String,
+    // Flutterwave specific fields
+    flwSubscriptionId: String, // Flutterwave subscription id
+    flwTxRef: String, // transaction reference used during init
     startDate: {
       type: Date,
-      required: true,
+      required: false,
     },
     dueDate: {
       type: Date,
-      required: true,
+      required: false,
     },
     paymentMethod: String,
   },
