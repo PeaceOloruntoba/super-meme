@@ -26,12 +26,15 @@ const subscriptionService = {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw ApiError.notFound("User not found.");
+        throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
       }
 
       const isPaidPlan = planId !== "free";
       if (isPaidPlan && !paymentMethodId) {
-        throw ApiError.badRequest("Payment method is required for paid plans.");
+        throw ApiError.badRequest(
+          "Payment method is required for paid plans.",
+          "PAYMENT_METHOD_REQUIRED"
+        );
       }
 
       const stripeCustomerId = await findOrCreateStripeCustomer(
@@ -117,9 +120,12 @@ const subscriptionService = {
       }
 
       if (error.type === "StripeCardError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "STRIPE_CARD_ERROR");
       }
-      throw ApiError.internalServerError("Failed to subscribe to the plan.");
+      throw ApiError.internalServerError(
+        "Failed to subscribe to the plan.",
+        "SUBSCRIBE_FAILED"
+      );
     }
   }
   /**
@@ -131,13 +137,14 @@ const subscriptionService = {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw ApiError.notFound("User not found.");
+        throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
       }
 
       const subscription = await Subscription.findOne({ userId });
       if (!subscription || !subscription.stripeSubscriptionId) {
         throw ApiError.badRequest(
-          "User does not have an active paid subscription to cancel."
+          "User does not have an active paid subscription to cancel.",
+          "NO_ACTIVE_SUBSCRIPTION"
         );
       } // Cancel the subscription at the end of the current billing period
 
@@ -162,7 +169,10 @@ const subscriptionService = {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internalServerError("Failed to cancel subscription.");
+      throw ApiError.internalServerError(
+        "Failed to cancel subscription.",
+        "CANCEL_SUBSCRIPTION_FAILED"
+      );
     }
   }
   /**
@@ -174,7 +184,7 @@ const subscriptionService = {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw ApiError.notFound("User not found.");
+        throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
       }
 
       const subscription = await Subscription.findOne({ userId }); // If no paid subscription is found, they are on the free plan.
@@ -208,7 +218,8 @@ const subscriptionService = {
         throw error;
       }
       throw ApiError.internalServerError(
-        "Failed to retrieve subscription status."
+        "Failed to retrieve subscription status.",
+        "SUBSCRIPTION_STATUS_FAILED"
       );
     }
   }
@@ -347,7 +358,10 @@ const subscriptionService = {
     try {
       const subscription = await Subscription.findOne({ userId });
       if (!subscription) {
-        throw ApiError.notFound("No active subscription found.");
+        throw ApiError.notFound(
+          "No active subscription found.",
+          "NO_ACTIVE_SUBSCRIPTION"
+        );
       }
 
       await attachPaymentMethod(subscription.stripeCustomerId, paymentMethodId);
@@ -369,7 +383,10 @@ const subscriptionService = {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internalServerError("Failed to update payment method.");
+      throw ApiError.internalServerError(
+        "Failed to update payment method.",
+        "UPDATE_PAYMENT_METHOD_FAILED"
+      );
     }
   },
 
@@ -418,7 +435,7 @@ const subscriptionService = {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw ApiError.notFound("User not found.");
+        throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
       }
 
       const subscription = await Subscription.findOne({ userId });
@@ -445,7 +462,8 @@ const subscriptionService = {
         throw error;
       }
       throw ApiError.internalServerError(
-        "Failed to retrieve subscription details."
+        "Failed to retrieve subscription details.",
+        "SUBSCRIPTION_DETAILS_FAILED"
       );
     }
   },

@@ -48,12 +48,12 @@ const invoiceService = {
     } catch (error) {
       console.error("Error creating invoice:", error);
       if (error.code === 11000) {
-        throw ApiError.conflict("Invoice number must be unique.");
+        throw ApiError.conflict("Invoice number must be unique.", "INVOICE_NUMBER_TAKEN");
       }
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to create invoice.");
+      throw ApiError.internalServerError("Failed to create invoice.", "INVOICE_CREATE_FAILED");
     }
   },
 
@@ -75,7 +75,7 @@ const invoiceService = {
       };
     } catch (error) {
       console.error("Error retrieving all invoices:", error);
-      throw ApiError.internalServerError("Failed to retrieve invoices.");
+      throw ApiError.internalServerError("Failed to retrieve invoices.", "INVOICE_LIST_FAILED");
     }
   },
 
@@ -100,7 +100,7 @@ const invoiceService = {
       };
     } catch (error) {
       console.error("Error retrieving invoices by client:", error);
-      throw ApiError.internalServerError("Failed to retrieve client invoices.");
+      throw ApiError.internalServerError("Failed to retrieve client invoices.", "INVOICE_LIST_BY_CLIENT_FAILED");
     }
   },
 
@@ -126,7 +126,8 @@ const invoiceService = {
     } catch (error) {
       console.error("Error retrieving invoices by project:", error);
       throw ApiError.internalServerError(
-        "Failed to retrieve project invoices."
+        "Failed to retrieve project invoices.",
+        "INVOICE_LIST_BY_PROJECT_FAILED"
       );
     }
   },
@@ -144,7 +145,7 @@ const invoiceService = {
         .populate("projectId", "name");
 
       if (!invoice) {
-        throw ApiError.notFound("Invoice not found.");
+        throw ApiError.notFound("Invoice not found.", "INVOICE_NOT_FOUND");
       }
 
       return {
@@ -156,9 +157,9 @@ const invoiceService = {
     } catch (error) {
       console.error(`Error retrieving single invoice ${invoiceId}:`, error);
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Invoice ID format.");
+        throw ApiError.badRequest("Invalid Invoice ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to retrieve invoice.");
+      throw ApiError.internalServerError("Failed to retrieve invoice.", "INVOICE_FETCH_FAILED");
     }
   },
 
@@ -187,7 +188,8 @@ const invoiceService = {
 
       if (!updatedInvoice) {
         throw ApiError.notFound(
-          "Invoice not found or you don't have permission to update it."
+          "Invoice not found or you don't have permission to update it.",
+          "INVOICE_NOT_FOUND"
         );
       }
 
@@ -200,12 +202,12 @@ const invoiceService = {
     } catch (error) {
       console.error(`Error updating invoice ${invoiceId}:`, error);
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Invoice ID format.");
+        throw ApiError.badRequest("Invalid Invoice ID format.", "INVALID_ID");
       }
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to update invoice.");
+      throw ApiError.internalServerError("Failed to update invoice.", "INVOICE_UPDATE_FAILED");
     }
   },
 
@@ -224,7 +226,8 @@ const invoiceService = {
 
       if (!invoice) {
         throw ApiError.notFound(
-          "Invoice not found or you don't have permission to delete it."
+          "Invoice not found or you don't have permission to delete it.",
+          "INVOICE_NOT_FOUND"
         );
       }
 
@@ -237,9 +240,9 @@ const invoiceService = {
     } catch (error) {
       console.error(`Error deleting invoice ${invoiceId}:`, error);
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Invoice ID format.");
+        throw ApiError.badRequest("Invalid Invoice ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to delete invoice.");
+      throw ApiError.internalServerError("Failed to delete invoice.", "INVOICE_DELETE_FAILED");
     }
   },
 };

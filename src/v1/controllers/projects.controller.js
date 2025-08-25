@@ -14,7 +14,10 @@ export const createProject = asyncWrapper(async (req, res, next) => {
   const projectData = req.body;
 
   if (!clientId) {
-    throw ApiError.badRequest("Client ID is required to create a project.");
+    throw ApiError.badRequest(
+      "Client ID is required to create a project.",
+      "MISSING_CLIENT_ID"
+    );
   }
 
   const result = await projectService.createProject(
@@ -42,7 +45,10 @@ export const getAllProjectsByClient = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const { clientId } = req.params;
   if (!clientId) {
-    throw ApiError.badRequest("Client ID is required in URL parameters.");
+    throw ApiError.badRequest(
+      "Client ID is required in URL parameters.",
+      "MISSING_CLIENT_ID"
+    );
   }
   const result = await projectService.getAllProjectsByClient(userId, clientId);
   res.status(result.statusCode).json(result);
@@ -56,7 +62,7 @@ export const getSingleProject = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
 
   if (!projectId) {
-    throw ApiError.badRequest("Project ID is required.");
+    throw ApiError.badRequest("Project ID is required.", "MISSING_PROJECT_ID");
   }
 
   const result = await projectService.getSingleProject(projectId, userId);
@@ -72,7 +78,7 @@ export const updateProject = asyncWrapper(async (req, res, next) => {
   const updateData = req.body;
 
   if (!projectId) {
-    throw ApiError.badRequest("Project ID is required.");
+    throw ApiError.badRequest("Project ID is required.", "MISSING_PROJECT_ID");
   }
 
   const result = await projectService.updateProject(
@@ -91,7 +97,7 @@ export const deleteProject = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
 
   if (!projectId) {
-    throw ApiError.badRequest("Project ID is required.");
+    throw ApiError.badRequest("Project ID is required.", "MISSING_PROJECT_ID");
   }
 
   const result = await projectService.deleteProject(projectId, userId);

@@ -26,9 +26,9 @@ const projectService = {
       console.error("Error creating project:", error);
 
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to create project.");
+      throw ApiError.internalServerError("Failed to create project.", "PROJECT_CREATE_FAILED");
     }
   },
 
@@ -51,7 +51,7 @@ const projectService = {
       };
     } catch (error) {
       console.error("Error retrieving all projects:", error);
-      throw ApiError.internalServerError("Failed to retrieve projects.");
+      throw ApiError.internalServerError("Failed to retrieve projects.", "PROJECT_LIST_FAILED");
     }
   },
 
@@ -75,7 +75,7 @@ const projectService = {
       };
     } catch (error) {
       console.error("Error retrieving projects by client:", error);
-      throw ApiError.internalServerError("Failed to retrieve client projects.");
+      throw ApiError.internalServerError("Failed to retrieve client projects.", "PROJECT_LIST_BY_CLIENT_FAILED");
     }
   },
 
@@ -93,7 +93,7 @@ const projectService = {
       }).populate("clientId");
 
       if (!project) {
-        throw ApiError.notFound("Project record not found.");
+        throw ApiError.notFound("Project record not found.", "PROJECT_NOT_FOUND");
       }
       return {
         success: true,
@@ -105,9 +105,9 @@ const projectService = {
       console.error(`Error retrieving single project ${projectId}:`, error);
 
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Project ID format.");
+        throw ApiError.badRequest("Invalid Project ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to retrieve project.");
+      throw ApiError.internalServerError("Failed to retrieve project.", "PROJECT_FETCH_FAILED");
     }
   },
 
@@ -128,7 +128,8 @@ const projectService = {
 
       if (!updatedProject) {
         throw ApiError.notFound(
-          "Project record not found or you don't have permission to update it."
+          "Project record not found or you don't have permission to update it.",
+          "PROJECT_NOT_FOUND"
         );
       }
       return {
@@ -142,13 +143,14 @@ const projectService = {
 
       if (error.name === "CastError") {
         throw ApiError.badRequest(
-          "Invalid Project ID format or invalid update data format."
+          "Invalid Project ID format or invalid update data format.",
+          "INVALID_ID"
         );
       }
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to update project.");
+      throw ApiError.internalServerError("Failed to update project.", "PROJECT_UPDATE_FAILED");
     }
   },
 
@@ -166,7 +168,8 @@ const projectService = {
       });
       if (!project) {
         throw ApiError.notFound(
-          "Project record not found or you don't have permission to delete it."
+          "Project record not found or you don't have permission to delete it.",
+          "PROJECT_NOT_FOUND"
         );
       }
       return {
@@ -179,9 +182,9 @@ const projectService = {
       console.error(`Error deleting project ${projectId}:`, error);
 
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Project ID format.");
+        throw ApiError.badRequest("Invalid Project ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to delete project.");
+      throw ApiError.internalServerError("Failed to delete project.", "PROJECT_DELETE_FAILED");
     }
   },
 };

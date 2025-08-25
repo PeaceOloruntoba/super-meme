@@ -61,9 +61,9 @@ const clientService = {
     } catch (error) {
       console.error("Error creating client:", error);
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to create client.");
+      throw ApiError.internalServerError("Failed to create client.", "CLIENT_CREATE_FAILED");
     }
   },
 
@@ -95,7 +95,7 @@ const clientService = {
       };
     } catch (error) {
       console.error("Error retrieving all clients:", error);
-      throw ApiError.internalServerError("Failed to retrieve clients.");
+      throw ApiError.internalServerError("Failed to retrieve clients.", "CLIENT_LIST_FAILED");
     }
   },
 
@@ -111,7 +111,7 @@ const clientService = {
       const client = await Client.findOne({ _id: clientId, userId });
 
       if (!client) {
-        throw ApiError.notFound("Client not found.");
+        throw ApiError.notFound("Client not found.", "CLIENT_NOT_FOUND");
       }
 
       const stats = await clientService.getClientStats(client._id, userId);
@@ -131,9 +131,9 @@ const clientService = {
     } catch (error) {
       console.error(`Error retrieving single client ${clientId}:`, error);
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Client ID format.");
+        throw ApiError.badRequest("Invalid Client ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to retrieve client.");
+      throw ApiError.internalServerError("Failed to retrieve client.", "CLIENT_FETCH_FAILED");
     }
   },
 
@@ -151,7 +151,8 @@ const clientService = {
       const existingClient = await Client.findOne({ _id: clientId, userId });
       if (!existingClient) {
         throw ApiError.notFound(
-          "Client not found or you don't have permission to update it."
+          "Client not found or you don't have permission to update it.",
+          "CLIENT_NOT_FOUND"
         );
       }
 
@@ -212,13 +213,14 @@ const clientService = {
       console.error(`Error updating client ${clientId}:`, error);
       if (error.name === "CastError") {
         throw ApiError.badRequest(
-          "Invalid Client ID format or invalid update data."
+          "Invalid Client ID format or invalid update data.",
+          "INVALID_ID"
         );
       }
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to update client.");
+      throw ApiError.internalServerError("Failed to update client.", "CLIENT_UPDATE_FAILED");
     }
   },
 
@@ -233,7 +235,8 @@ const clientService = {
       const client = await Client.findOneAndDelete({ _id: clientId, userId });
       if (!client) {
         throw ApiError.notFound(
-          "Client not found or you don't have permission to delete it."
+          "Client not found or you don't have permission to delete it.",
+          "CLIENT_NOT_FOUND"
         );
       }
       return {
@@ -245,9 +248,9 @@ const clientService = {
     } catch (error) {
       console.error(`Error deleting client ${clientId}:`, error);
       if (error.name === "CastError") {
-        throw ApiError.badRequest("Invalid Client ID format.");
+        throw ApiError.badRequest("Invalid Client ID format.", "INVALID_ID");
       }
-      throw ApiError.internalServerError("Failed to delete client.");
+      throw ApiError.internalServerError("Failed to delete client.", "CLIENT_DELETE_FAILED");
     }
   },
 };

@@ -34,7 +34,10 @@ export const findOrCreateStripeCustomer = async (
     return customer.id;
   } catch (error) {
     console.error("Stripe customer creation/retrieval failed:", error);
-    throw ApiError.internalServerError("Failed to manage Stripe customer.");
+    throw ApiError.internalServerError(
+      "Failed to manage Stripe customer.",
+      "STRIPE_CUSTOMER_FAILED"
+    );
   }
 };
 
@@ -60,7 +63,10 @@ export const attachPaymentMethod = async (
     });
   } catch (error) {
     console.error("Stripe payment method attachment failed:", error);
-    throw ApiError.internalServerError("Failed to attach payment method.");
+    throw ApiError.internalServerError(
+      "Failed to attach payment method.",
+      "STRIPE_ATTACH_PM_FAILED"
+    );
   }
 };
 
@@ -80,7 +86,10 @@ export const createStripeSubscription = async (stripeCustomerId, priceId) => {
     return subscription;
   } catch (error) {
     console.error("Stripe subscription creation failed:", error);
-    throw ApiError.internalServerError("Failed to create Stripe subscription.");
+    throw ApiError.internalServerError(
+      "Failed to create Stripe subscription.",
+      "STRIPE_SUB_CREATE_FAILED"
+    );
   }
 };
 
@@ -97,7 +106,10 @@ export const cancelStripeSubscription = async (stripeSubscriptionId) => {
     return deletedSubscription;
   } catch (error) {
     console.error("Stripe subscription cancellation failed:", error);
-    throw ApiError.internalServerError("Failed to cancel Stripe subscription.");
+    throw ApiError.internalServerError(
+      "Failed to cancel Stripe subscription.",
+      "STRIPE_SUB_CANCEL_FAILED"
+    );
   }
 };
 
@@ -124,7 +136,10 @@ export const updateStripeSubscription = async (
     return updatedSubscription;
   } catch (error) {
     console.error("Stripe subscription update failed:", error);
-    throw ApiError.internalServerError("Failed to update Stripe subscription.");
+    throw ApiError.internalServerError(
+      "Failed to update Stripe subscription.",
+      "STRIPE_SUB_UPDATE_FAILED"
+    );
   }
 };
 

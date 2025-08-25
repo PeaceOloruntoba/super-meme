@@ -28,7 +28,10 @@ export const getAllInvoicesByClient = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const { clientId } = req.params;
   if (!clientId) {
-    throw ApiError.badRequest("Client ID is required in URL parameters.");
+    throw ApiError.badRequest(
+      "Client ID is required in URL parameters.",
+      "MISSING_CLIENT_ID"
+    );
   }
   const result = await invoiceService.getAllInvoicesByClient(userId, clientId);
   res.status(result.statusCode).json(result);
@@ -41,7 +44,10 @@ export const getAllInvoicesByProject = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const { projectId } = req.params;
   if (!projectId) {
-    throw ApiError.badRequest("Project ID is required in URL parameters.");
+    throw ApiError.badRequest(
+      "Project ID is required in URL parameters.",
+      "MISSING_PROJECT_ID"
+    );
   }
   const result = await invoiceService.getAllInvoicesByProject(
     userId,
@@ -57,7 +63,7 @@ export const getSingleInvoice = asyncWrapper(async (req, res, next) => {
   const { invoiceId } = req.params;
   const { userId } = req.user;
   if (!invoiceId) {
-    throw ApiError.badRequest("Invoice ID is required.");
+    throw ApiError.badRequest("Invoice ID is required.", "MISSING_INVOICE_ID");
   }
   const result = await invoiceService.getSingleInvoice(invoiceId, userId);
   res.status(result.statusCode).json(result);
@@ -71,7 +77,7 @@ export const updateInvoice = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const updateData = req.body;
   if (!invoiceId) {
-    throw ApiError.badRequest("Invoice ID is required.");
+    throw ApiError.badRequest("Invoice ID is required.", "MISSING_INVOICE_ID");
   }
   const result = await invoiceService.updateInvoice(
     invoiceId,
@@ -88,7 +94,7 @@ export const deleteInvoice = asyncWrapper(async (req, res, next) => {
   const { invoiceId } = req.params;
   const { userId } = req.user;
   if (!invoiceId) {
-    throw ApiError.badRequest("Invoice ID is required.");
+    throw ApiError.badRequest("Invoice ID is required.", "MISSING_INVOICE_ID");
   }
   const result = await invoiceService.deleteInvoice(invoiceId, userId);
   res.status(result.statusCode).json(result);

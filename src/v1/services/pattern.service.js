@@ -54,7 +54,8 @@ const patternService = {
         imageUrls.push(uploadedUrl);
       } else {
         throw ApiError.badRequest(
-          "No image data or AI generation request provided for pattern."
+          "No image data or AI generation request provided for pattern.",
+          "PATTERN_INPUT_REQUIRED"
         );
       }
 
@@ -76,13 +77,16 @@ const patternService = {
     } catch (error) {
       console.error("Error creating pattern:", error);
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
 
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internalServerError("Failed to create pattern.");
+      throw ApiError.internalServerError(
+        "Failed to create pattern.",
+        "PATTERN_CREATE_FAILED"
+      );
     }
   },
 
@@ -100,7 +104,10 @@ const patternService = {
       };
     } catch (error) {
       console.error("Error retrieving public patterns:", error);
-      throw ApiError.internalServerError("Failed to retrieve patterns.");
+      throw ApiError.internalServerError(
+        "Failed to retrieve patterns.",
+        "PATTERN_PUBLIC_LIST_FAILED"
+      );
     }
   },
 
@@ -115,26 +122,30 @@ const patternService = {
       };
     } catch (error) {
       console.error("Error retrieving all patterns:", error);
-      throw ApiError.internalServerError("Failed to retrieve patterns.");
+      throw ApiError.internalServerError(
+        "Failed to retrieve patterns.",
+        "PATTERN_LIST_FAILED"
+      );
     }
   },
 
   getSinglePattern: async (patternId, userId) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
-        throw ApiError.badRequest("Invalid Pattern ID format.");
+        throw ApiError.badRequest("Invalid Pattern ID format.", "INVALID_ID");
       }
 
       const pattern = await Pattern.findOne({ _id: patternId });
 
       if (!pattern) {
-        throw ApiError.notFound("Pattern not found.");
+        throw ApiError.notFound("Pattern not found.", "PATTERN_NOT_FOUND");
       }
 
       // Allow access if it's user's own or public
       if (pattern.userId !== userId && pattern.userId !== "general") {
         throw ApiError.forbidden(
-          "You don't have permission to access this pattern."
+          "You don't have permission to access this pattern.",
+          "PATTERN_FORBIDDEN"
         );
       }
 
@@ -149,25 +160,29 @@ const patternService = {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internalServerError("Failed to retrieve pattern.");
+      throw ApiError.internalServerError(
+        "Failed to retrieve pattern.",
+        "PATTERN_FETCH_FAILED"
+      );
     }
   },
 
   updatePattern: async (patternId, userId, updateData, base64Image = null) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
-        throw ApiError.badRequest("Invalid Pattern ID format.");
+        throw ApiError.badRequest("Invalid Pattern ID format.", "INVALID_ID");
       }
 
       const existingPattern = await Pattern.findById(patternId);
       if (!existingPattern) {
-        throw ApiError.notFound("Pattern not found.");
+        throw ApiError.notFound("Pattern not found.", "PATTERN_NOT_FOUND");
       }
 
       if (existingPattern.userId !== userId) {
         // TODO: Add admin check here, e.g., if (!req.user.isAdmin) throw forbidden
         throw ApiError.forbidden(
-          "You don't have permission to update this pattern."
+          "You don't have permission to update this pattern.",
+          "PATTERN_FORBIDDEN"
         );
       }
 
@@ -209,28 +224,32 @@ const patternService = {
         throw error;
       }
       if (error.name === "ValidationError") {
-        throw ApiError.badRequest(error.message);
+        throw ApiError.badRequest(error.message, "VALIDATION_ERROR");
       }
-      throw ApiError.internalServerError("Failed to update pattern.");
+      throw ApiError.internalServerError(
+        "Failed to update pattern.",
+        "PATTERN_UPDATE_FAILED"
+      );
     }
   },
 
   deletePattern: async (patternId, userId) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(patternId)) {
-        throw ApiError.badRequest("Invalid Pattern ID format.");
+        throw ApiError.badRequest("Invalid Pattern ID format.", "INVALID_ID");
       }
 
       const pattern = await Pattern.findById(patternId);
 
       if (!pattern) {
-        throw ApiError.notFound("Pattern not found.");
+        throw ApiError.notFound("Pattern not found.", "PATTERN_NOT_FOUND");
       }
 
       if (pattern.userId !== userId) {
         // TODO: Add admin check here
         throw ApiError.forbidden(
-          "You don't have permission to delete this pattern."
+          "You don't have permission to delete this pattern.",
+          "PATTERN_FORBIDDEN"
         );
       }
 
@@ -254,7 +273,10 @@ const patternService = {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internalServerError("Failed to delete pattern.");
+      throw ApiError.internalServerError(
+        "Failed to delete pattern.",
+        "PATTERN_DELETE_FAILED"
+      );
     }
   },
 };

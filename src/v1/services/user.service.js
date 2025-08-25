@@ -13,7 +13,7 @@ const userService = {
   getProfile: async function (userId) {
     const user = await User.findById(userId);
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
     user.password = undefined;
     return {
@@ -32,7 +32,7 @@ const userService = {
   deleteAccount: async function (userId) {
     const user = await User.findById(userId);
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
     if (user.subscriptionId) {
       await subscriptionService.cancelSubscription(userId);
@@ -56,7 +56,7 @@ const userService = {
   toggle2FA: async function (userId, enable) {
     const user = await User.findById(userId);
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
     user.is2FAEnabled = enable;
     await user.save();
@@ -75,7 +75,7 @@ const userService = {
   logoutAll: async function (userId) {
     const user = await User.findById(userId);
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
     user.activeSessions = [];
     await user.save();
@@ -96,7 +96,7 @@ const userService = {
     const user = await User.findById(userId);
 
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
 
     const allowedFields = [
@@ -141,7 +141,7 @@ const userService = {
     const user = await User.findById(userId);
 
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
 
     const allowedSettingsFields = [
@@ -181,7 +181,7 @@ const userService = {
     const user = await User.findById(userId);
 
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
 
     const allowedSettingsFields = [
@@ -222,12 +222,12 @@ const userService = {
     const user = await User.findById(userId).select("+password");
 
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      throw ApiError.unauthorized("Incorrect current password.");
+      throw ApiError.unauthorized("Incorrect current password.", "INCORRECT_PASSWORD");
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -249,13 +249,13 @@ const userService = {
    */
   updateImage: async function (userId, imageFile) {
     if (!imageFile || !imageFile.tempFilePath) {
-      throw ApiError.badRequest("No image file provided for upload.");
+      throw ApiError.badRequest("No image file provided for upload.", "IMAGE_MISSING");
     }
 
     const user = await User.findById(userId);
 
     if (!user) {
-      throw ApiError.notFound("User not found.");
+      throw ApiError.notFound("User not found.", "USER_NOT_FOUND");
     }
 
     try {
@@ -277,7 +277,8 @@ const userService = {
         throw error;
       }
       throw ApiError.internalServerError(
-        "Failed to upload image: " + error.message
+        "Failed to upload image: " + error.message,
+        "IMAGE_UPLOAD_FAILED"
       );
     }
   },

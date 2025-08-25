@@ -12,7 +12,7 @@ import { OAuth2Client } from "google-auth-library";
 export async function findUserByEmail(email) {
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
-    throw ApiError.notFound("No user with this email");
+    throw ApiError.notFound("No user with this email", "USER_NOT_FOUND");
   }
   return user;
 }
@@ -24,7 +24,7 @@ export async function findUserByIdOrEmail(identifier) {
   ).select("+password");
 
   if (!user) {
-    throw ApiError.notFound("User Not Found");
+    throw ApiError.notFound("User Not Found", "USER_NOT_FOUND");
   }
 
   return user;
@@ -69,7 +69,8 @@ export async function login(userData = {}) {
   if (!user.isEmailVerified) {
     await emailService.sendOTPEmail(user.email, user.firstName);
     throw ApiError.forbidden(
-      "Email Not Verified, please check your email for the OTP"
+      "Email Not Verified, please check your email for the OTP",
+      "EMAIL_NOT_VERIFIED"
     );
   }
 
@@ -113,7 +114,7 @@ export async function verifyOTP({ email, otp }) {
 
   const otpExists = await OTP.findOne({ email, otp });
   if (!otpExists || otpExists.expiresAt < Date.now()) {
-    throw ApiError.badRequest("Invalid or Expired OTP");
+    throw ApiError.badRequest("Invalid or Expired OTP", "INVALID_OTP");
   }
 
   user.isEmailVerified = true;
@@ -131,7 +132,7 @@ export async function resetPassword({ email, otp, password }) {
   const user = await findUserByEmail(email);
   const otpExists = await OTP.findOne({ email, otp });
   if (!otpExists) {
-    throw ApiError.badRequest("Invalid or Expired OTP");
+    throw ApiError.badRequest("Invalid or Expired OTP", "INVALID_OTP");
   }
 
   user.password = await hashPassword(password);
@@ -152,12 +153,12 @@ export async function oauthGoogle({ idToken }) {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
   } catch (e) {
-    throw ApiError.unauthorized("Invalid Google token");
+    throw ApiError.unauthorized("Invalid Google token", "GOOGLE_TOKEN_INVALID");
   }
 
   const payload = ticket.getPayload();
   const email = payload?.email;
-  if (!email) throw ApiError.badRequest("Google account has no email");
+  if (!email) throw ApiError.badRequest("Google account has no email", "GOOGLE_EMAIL_MISSING");
 
   const providerId = payload.sub;
   const firstName = payload.given_name || "";
@@ -213,13 +214,13 @@ export async function oauthFacebook({ accessToken }) {
       }
     );
   } catch (e) {
-    throw ApiError.unauthorized("Invalid Facebook token");
+    throw ApiError.unauthorized("Invalid Facebook token", "FACEBOOK_TOKEN_INVALID");
   }
 
   const data = profileRes.data || {};
   const email = data.email; // might be undefined if not granted
   const providerId = data.id;
-  if (!providerId) throw ApiError.badRequest("Unable to fetch Facebook profile");
+  if (!providerId) throw ApiError.badRequest("Unable to fetch Facebook profile", "FACEBOOK_PROFILE_ERROR");
 
   // If email is missing, synthesize a stable email-like identifier to satisfy unique constraint
   const resolvedEmail = email || `${providerId}@facebook.local`; // internal-only

@@ -49,11 +49,14 @@ const PLAN_LIMITS = {
 export const requireFeature = (feature) => async (req, res, next) => {
   const { userId } = req.user;
   const user = await User.findById(userId);
-  if (!user) return next(ApiError.notFound("User not found"));
+  if (!user) return next(ApiError.notFound("User not found", "USER_NOT_FOUND"));
 
   if (!user.isSubActive) {
     return next(
-      ApiError.forbidden("Subscription is inactive. Please renew or upgrade.")
+      ApiError.forbidden(
+        "Subscription is inactive. Please renew or upgrade.",
+        "SUBSCRIPTION_INACTIVE"
+      )
     );
   }
 
@@ -61,7 +64,8 @@ export const requireFeature = (feature) => async (req, res, next) => {
   if (!limits[feature]) {
     return next(
       ApiError.forbidden(
-        `Feature '${feature.replace("has", "")}' requires a higher plan.`
+        `Feature '${feature.replace("has", "")}' requires a higher plan.`,
+        "FEATURE_NOT_AVAILABLE"
       )
     );
   }
@@ -72,7 +76,7 @@ export const requireFeature = (feature) => async (req, res, next) => {
 export const checkClientLimit = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const user = await User.findById(userId);
-  if (!user) return next(ApiError.notFound("User not found"));
+  if (!user) return next(ApiError.notFound("User not found", "USER_NOT_FOUND"));
 
   const limits = PLAN_LIMITS[user.plan];
   const clientCount = await Client.countDocuments({ userId });
@@ -80,7 +84,8 @@ export const checkClientLimit = asyncWrapper(async (req, res, next) => {
   if (clientCount >= limits.maxClients) {
     return next(
       ApiError.forbidden(
-        `You have reached the maximum number of clients (${limits.maxClients}) for your plan. Upgrade to add more.`
+        `You have reached the maximum number of clients (${limits.maxClients}) for your plan. Upgrade to add more.`,
+        "PLAN_CLIENT_LIMIT_REACHED"
       )
     );
   }
@@ -91,7 +96,7 @@ export const checkClientLimit = asyncWrapper(async (req, res, next) => {
 export const checkProjectLimit = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const user = await User.findById(userId);
-  if (!user) return next(ApiError.notFound("User not found"));
+  if (!user) return next(ApiError.notFound("User not found", "USER_NOT_FOUND"));
 
   const limits = PLAN_LIMITS[user.plan];
   const projectCount = await Project.countDocuments({ userId });
@@ -99,7 +104,8 @@ export const checkProjectLimit = asyncWrapper(async (req, res, next) => {
   if (projectCount >= limits.maxProjects) {
     return next(
       ApiError.forbidden(
-        `You have reached the maximum number of projects (${limits.maxProjects}) for your plan. Upgrade to add more.`
+        `You have reached the maximum number of projects (${limits.maxProjects}) for your plan. Upgrade to add more.`,
+        "PLAN_PROJECT_LIMIT_REACHED"
       )
     );
   }
@@ -110,14 +116,15 @@ export const checkProjectLimit = asyncWrapper(async (req, res, next) => {
 export const checkAIGenerationLimit = asyncWrapper(async (req, res, next) => {
   const { userId } = req.user;
   const user = await User.findById(userId);
-  if (!user) return next(ApiError.notFound("User not found"));
+  if (!user) return next(ApiError.notFound("User not found", "USER_NOT_FOUND"));
 
   const limits = PLAN_LIMITS[user.plan];
 
   if (user.aiGenerationsThisMonth >= limits.maxAIGenerationsPerMonth) {
     return next(
       ApiError.forbidden(
-        `You have reached the maximum AI generations (${limits.maxAIGenerationsPerMonth}) for this month. Upgrade or wait for reset.`
+        `You have reached the maximum AI generations (${limits.maxAIGenerationsPerMonth}) for this month. Upgrade or wait for reset.`,
+        "PLAN_AI_LIMIT_REACHED"
       )
     );
   }
