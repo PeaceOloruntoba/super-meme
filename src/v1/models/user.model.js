@@ -9,11 +9,15 @@ const UserSchema = new Schema(
   {
     firstName: {
       type: String,
-      required: [true, "Please provide a firstName"],
+      required: [function () {
+        return !this.provider; // Required only for email/password users
+      }, "Please provide a firstName"],
     },
     lastName: {
       type: String,
-      required: [true, "Please provide a lastName"],
+      required: [function () {
+        return !this.provider; // Required only for email/password users
+      }, "Please provide a lastName"],
     },
     email: {
       type: String,
@@ -28,10 +32,22 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      required: [function () {
+        return !this.provider; // No password required for social accounts
+      }, "Please provide a password"],
       select: false,
       minlength: [6, "Password must be at least 6 characters long"],
       maxlength: [1024, "Password must not exceed 1024 characters"],
+    },
+    provider: {
+      type: String,
+      enum: [null, "google", "facebook"],
+      default: null,
+    },
+    providerId: {
+      type: String,
+      default: null,
+      index: true,
     },
     address: {
       type: String,

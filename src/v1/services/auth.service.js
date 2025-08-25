@@ -6,6 +6,8 @@ import ApiError from "../../utils/apiError.js";
 import { hashPassword, validatePassword } from "../../utils/validationUtils.js";
 import ApiSuccess from "../../utils/apiSuccess.js";
 import emailService from "./email.service.js";
+import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 
 export async function findUserByEmail(email) {
   const user = await User.findOne({ email }).select("+password");
@@ -137,6 +139,124 @@ export async function resetPassword({ email, otp, password }) {
   return ApiSuccess.ok("Password Updated");
 }
 
+// OAuth: Google
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export async function oauthGoogle({ idToken }) {
+  if (!idToken) throw ApiError.badRequest("Google idToken is required");
+
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+  } catch (e) {
+    throw ApiError.unauthorized("Invalid Google token");
+  }
+
+  const payload = ticket.getPayload();
+  const email = payload?.email;
+  if (!email) throw ApiError.badRequest("Google account has no email");
+
+  const providerId = payload.sub;
+  const firstName = payload.given_name || "";
+  const lastName = payload.family_name || "";
+  const image = payload.picture;
+
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = await User.create({
+      email,
+      firstName,
+      lastName,
+      image,
+      provider: "google",
+      providerId,
+      isEmailVerified: true,
+      // no password required for social accounts
+    });
+  } else {
+    // Ensure provider fields are set; do not override existing password account policies
+    if (!user.provider) {
+      user.provider = "google";
+      user.providerId = providerId;
+    }
+    if (!user.isEmailVerified) user.isEmailVerified = true;
+    await user.save();
+  }
+
+  const token = generateToken({
+    userId: user._id,
+    email: user.email,
+    roles: user.roles,
+  });
+
+  user.password = undefined;
+  return ApiSuccess.ok("Login Successful", { user, token });
+}
+
+// OAuth: Facebook
+export async function oauthFacebook({ accessToken }) {
+  if (!accessToken) throw ApiError.badRequest("Facebook accessToken is required");
+
+  // Fetch basic profile
+  let profileRes;
+  try {
+    profileRes = await axios.get(
+      `https://graph.facebook.com/me`,
+      {
+        params: {
+          fields: "id,first_name,last_name,email,picture",
+          access_token: accessToken,
+        },
+      }
+    );
+  } catch (e) {
+    throw ApiError.unauthorized("Invalid Facebook token");
+  }
+
+  const data = profileRes.data || {};
+  const email = data.email; // might be undefined if not granted
+  const providerId = data.id;
+  if (!providerId) throw ApiError.badRequest("Unable to fetch Facebook profile");
+
+  // If email is missing, synthesize a stable email-like identifier to satisfy unique constraint
+  const resolvedEmail = email || `${providerId}@facebook.local`; // internal-only
+  const firstName = data.first_name || "";
+  const lastName = data.last_name || "";
+  const image = data.picture?.data?.url;
+
+  let user = await User.findOne({ email: resolvedEmail });
+  if (!user) {
+    user = await User.create({
+      email: resolvedEmail,
+      firstName,
+      lastName,
+      image,
+      provider: "facebook",
+      providerId,
+      isEmailVerified: Boolean(email),
+    });
+  } else {
+    if (!user.provider) {
+      user.provider = "facebook";
+      user.providerId = providerId;
+    }
+    if (email && !user.isEmailVerified) user.isEmailVerified = true;
+    await user.save();
+  }
+
+  const token = generateToken({
+    userId: user._id,
+    email: user.email,
+    roles: user.roles,
+  });
+
+  user.password = undefined;
+  return ApiSuccess.ok("Login Successful", { user, token });
+}
+
 const authService = {
   findUserByEmail,
   findUserByIdOrEmail,
@@ -147,6 +267,8 @@ const authService = {
   verifyOTP,
   forgotPassword,
   resetPassword,
+  oauthGoogle,
+  oauthFacebook,
 };
 
 export default authService;

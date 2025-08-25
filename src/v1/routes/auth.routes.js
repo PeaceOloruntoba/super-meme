@@ -8,6 +8,8 @@ import {
   resetPassword,
   sendOTP,
   verifyOTP,
+  oauthGoogle,
+  oauthFacebook,
 } from "../controllers/auth.controller.js";
 import { isAuth } from "../../middlewares/auth.js";
 import { userValidator } from "../validators/user.validator.js";
@@ -26,5 +28,7 @@ router.route("/send-otp").post(sendOTP).all(methodNotAllowed);
 router.route("/verify-otp").post(verifyOTP).all(methodNotAllowed);
 router.route("/forgot-password").post(forgotPassword).all(methodNotAllowed);
 router.route("/reset-password").post(resetPassword).all(methodNotAllowed);
+router.route("/oauth/google").post(oauthGoogle).all(methodNotAllowed);
+router.route("/oauth/facebook").post(oauthFacebook).all(methodNotAllowed);
 
 export default router;

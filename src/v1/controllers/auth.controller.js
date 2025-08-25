@@ -44,3 +44,15 @@ export const resetPassword = asyncWrapper(async (req, res, next) => {
 });
 
 // export default { register, login, getUser };
+
+export const oauthGoogle = asyncWrapper(async (req, res, next) => {
+  const { idToken } = req.body;
+  const result = await authService.oauthGoogle({ idToken });
+  res.status(200).json(result);
+});
+
+export const oauthFacebook = asyncWrapper(async (req, res, next) => {
+  const { accessToken } = req.body;
+  const result = await authService.oauthFacebook({ accessToken });
+  res.status(200).json(result);
+});
