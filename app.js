@@ -23,6 +23,7 @@ import subscriptionRoutesV1 from "./src/v1/routes/subscription.routes.js";
 import webhookRoutesV1 from "./src/v1/routes/webhook.routes.js";
 import dashboardRoutesV1 from "./src/v1/routes/dashboard.routes.js";
 import analyticsRoutesV1 from "./src/v1/routes/analytics.routes.js";
+import adminRoutesV1 from "./src/v1/routes/admin.routes.js";
 import subscriptionService from "./src/v1/services/subscription.service.js";
 
 const app = express();
@@ -32,7 +33,44 @@ app.use("/webhook/flutterwave", webhookRoutesV1);
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(cors());
+
+// CORS configuration
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL_PROD,
+  process.env.CLIENT_URL_STAGING,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"), false);
+    },
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+    ],
+  })
+);
+
+// Handle preflight across all routes
+app.options("*", cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"), false);
+  },
+  credentials: true,
+}));
+
 app.use(
   fileUpload({
     useTempFiles: true,
@@ -52,7 +90,7 @@ app.use("/api/v1/patterns", patternRoutesV1);
 app.use("/api/v1/subscriptions", subscriptionRoutesV1);
 app.use("/api/v1/dashboard", dashboardRoutesV1);
 app.use("/api/v1/analytics", analyticsRoutesV1);
-// app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/admin", adminRoutesV1);
 app.use(notFound);
 app.use(errorMiddleware);
 
